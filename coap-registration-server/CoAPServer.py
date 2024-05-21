@@ -2,7 +2,10 @@ import mysql.connector
 from mysql.connector import Error
 from coapthon.server.coap import CoAP
 from resources.Registration import Registration
+from resources.Telemetry import Telemetry
+from resources.Control import Control
 import json
+
 
 class CoAPServer(CoAP):
     
@@ -17,14 +20,20 @@ class CoAPServer(CoAP):
         """
         CoAP.__init__(self, (host, port), False)
         self.add_resource("register/", Registration())
+        self.add_resource("telemetry/", Telemetry())
+        self.add_resource("control/", Control())
 
         # Database connection setup
         try:
+            # import credentials.key file to get MySQL credentials
+            with open("private/credentials.key", "r") as file:
+                self.credentials = json.load(file)
+
             self.connection = mysql.connector.connect(
-                host='your_mysql_host',
-                database='your_database_name',
-                user='your_username',
-                password='your_password'
+                host= self.credentials['host'],
+                database= self.credentials['database'],
+                user= self.credentials['user'],
+                password= self.credentials['password']
             )
             if self.connection.is_connected():
                 print("Connected to MySQL database")
@@ -41,7 +50,10 @@ class CoAPServer(CoAP):
         super(CoAPServer, self).close()
 
 if __name__ == "__main__":
-    server = CoAPServer("localhost", 5683)
+    host = "localhost"
+    port = 5683
+    server = CoAPServer(host, port)
+
     try:
         print("CoAP server start")
         server.listen(10)
