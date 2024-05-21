@@ -20,7 +20,6 @@ class Registration(Resource):
 
         # Extract the json payload from the request
         json_payload = request.payload.decode('utf-8')
-        print(json_payload)
         
         try:
             data = json.loads(json_payload)

@@ -37,4 +37,3 @@ INSERT INTO Component (error_count) VALUES (0);
 INSERT INTO Component (error_count) VALUES (0);
 INSERT INTO Component (error_count) VALUES (0);
 INSERT INTO Component (error_count) VALUES (0);
-
