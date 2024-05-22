@@ -60,7 +60,7 @@ PROCESS_THREAD(pressure_server, ev, data)
   // LOG_INFO("--Registered--\n");
 
   // set a timer to send the pressure value every 10 seconds
-  etimer_set(&e_timer, CLOCK_SECOND * 5);
+  etimer_set(&e_timer, CLOCK_SECOND * 10);
 
   while (1)
   {

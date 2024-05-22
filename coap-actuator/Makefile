@@ -8,6 +8,14 @@ PLATFORMS_EXCLUDE = sky z1
 # Include CoAP resources
 MODULES_REL += ./resources
 
+MODULES_REL += /home/iot_ubuntu_intel/.local/lib/python3.10/site-packages/emlearn
+
+
+# Aggiungi json-c alla lista delle librerie
+TARGET_LIBFILES += -lm -ljson-c
+
+INC += /home/iot_ubuntu_intel/.local/lib/python3.10/site-packages/emlearn
+
 CONTIKI=../../..
 
 # Include the CoAP implementation

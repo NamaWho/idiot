@@ -7,6 +7,7 @@
 #include "coap-engine.h"
 #include "coap-blocking-api.h"
 #include "sys/etimer.h"
+#include "DT_model.h"
 
 // button library
 #if PLATFORM_SUPPORTS_BUTTON_HAL
@@ -76,10 +77,7 @@ static uint8_t error_one_count = 0;
 static uint8_t error_two_count = 0;
 static uint8_t error_three_count = 0;
 static uint8_t error_four_count = 0;
-static uint8_t comp_one_repair = 0;
-static uint8_t comp_two_repair = 0;
-static uint8_t comp_three_repair = 0;
-static uint8_t comp_four_repair = 0;*/
+static uint8_t error_five_count = 0;*/
 
 /* ----------------------------------- */
 
@@ -98,11 +96,28 @@ notification_callback(coap_observee_t *obs, void *notification,
   printf("Observee URI: %s\n", obs->url);
   if(notification) {
     len = coap_get_payload(notification, &payload);
+
   }
   switch(flag) {
   case NOTIFICATION_OK:
     printf("NOTIFICATION OK: %*s\n", len, (char *)payload);
+    
+    json_object *parsed_json = json_tokener_parse((char *)payload);
+
+    if (parsed_json == NULL) {
+        printf("Error parsing JSON\n");
+        
+    }
+
+    json_object *sensor = json_object_object_get(parsed_json, "sensor");
+    json_object *value = json_object_object_get(parsed_json, "value");
+
+    printf("Sensor: %s\n", json_object_get_string(sensor));
+
+    printf("Value: %.s\n", json_object_get_double(value));
+
     break;
+
   case OBSERVE_OK: /* server accepeted observation request */
     printf("OBSERVE_OK: %*s\n", len, (char *)payload);
     break;
@@ -220,7 +235,7 @@ PROCESS_THREAD(alarm_client, ev, data)
     PROCESS_BEGIN();
 
     // set the timer
-    etimer_set(&et, 2 * CLOCK_SECOND);
+    etimer_set(&et, 5 * CLOCK_SECOND);
 
     /*coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
     coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);  
@@ -251,11 +266,27 @@ PROCESS_THREAD(alarm_client, ev, data)
     COAP_BLOCKING_REQUEST(&vibration_server_ep, &request[3], client_chunk_handler);*/
 
     while (1){
-        PROCESS_WAIT_EVENT();
-        if(ev == PROCESS_EVENT_TIMER){
-            printf("Timer event\n");
-            etimer_reset(&et);
-        }
+      PROCESS_YIELD();
+      if(etimer_expired(&et)){
+        // make prediction
+        // print the prediction
+
+        // prepare vector of float values
+        float values[9] = {186.505383,447.676309, 38.942684, 143.116557, 1.0, 0.0, 0.0, 1.0, 0.0};
+
+ 
+    
+        // make prediction
+        int prediction = model_predict(values, 9);
+
+        // print the prediction
+        printf("Prediction: %d\n", prediction);
+
+        // reset the timer
+        etimer_reset(&et);
+      }
+        
+  
     }
 
 
