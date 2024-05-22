@@ -2,7 +2,8 @@
 from mysql.connector import Error
 from coapthon.resources.resource import Resource
 import json
-from observe import ObserveSensor
+from models.observer import ObserveSensor
+from models.database import Database
 
 class Registration(Resource):
 
@@ -10,27 +11,25 @@ class Registration(Resource):
     vibration_sensor = 0
     voltage_sensor = 0
     rotation_sensor = 0
+    alarm_actuator = 0
 
     pressure_address = ""
     vibration_address = ""
     voltage_address = ""
     rotation_address = ""
+    alarm_address = 0
 
     def __init__(self, name="Registration"):
         super(Registration, self).__init__(name)
         self.payload = "Registration Resource"
     
-    def render_POST(self, request):
-        self.payload = "POST Registration Resource"
-
-        # Extract the json payload from the request
-        json_payload = request.payload.decode('utf-8')
+    def render_GET(self, request):
+        self.payload = "GET Registration Resource"
         
         try:
-            data = json.loads(json_payload)
-            ip_address = data.get('ip_address', '')
-            type = data.get('type', '')
-            status = data.get('status', '')
+            ip_address = request.source
+            type = request.payload
+            status = 1
 
             if type == "pressure":
                 self.pressure_sensor = 1
@@ -48,8 +47,11 @@ class Registration(Resource):
                 self.rotation_sensor = 1
                 self.rotation_address = ip_address
                 ObserveSensor(ip_address, "rotation")
+            elif type == "alarm":
+                self.alarm_actuator = 1
+                self.alarm_address = ip_address
             else:
-                self.payload = "Invalid sensor type"
+                self.payload = "Invalid node type"
                 return self
 
             # Insert node info into Sensor table if not already present

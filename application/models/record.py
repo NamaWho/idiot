@@ -52,7 +52,6 @@ class Record:
         else:
             super().__setattr__(name, value)
         
-
     def __str__(self):
         """
         Return the string representation of the record

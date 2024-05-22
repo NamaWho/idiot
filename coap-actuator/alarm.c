@@ -18,6 +18,7 @@
 
 
 /* ------ CoAP resources ------ */
+#define SERVER_EP "coap://[fd00::1]:5683"
 #define ROTATION_SERVER_EP "coap://[fd00::202:2:2:2]:5683"
 #define VOLTAGE_SERVER_EP "coap://[fd00::202:2:2:2]:5683"
 #define PRESSURE_SERVER_EP "coap://[fd00::202:2:2:2]:5683"
@@ -95,8 +96,23 @@ void client_chunk_handler(coap_message_t *response)
     }
 }
 
+void client_chunk_handler_registration(coap_message_t *response)
+{
+	const uint8_t *chunk;
+
+	if(response == NULL) {
+		LOG_INFO("Request timed out");
+		return;
+	}
+	registered = true;
+	int len = coap_get_payload(response, &chunk);
+	LOG_INFO("|%.*s \n", len, (char *)chunk);
+}
+
+
 PROCESS_THREAD(alarm_client, ev, data)
 {
+    static coap_endpoint_t main_server_ep;
     static coap_endpoint_t rotation_server_ep;
     static coap_endpoint_t voltage_server_ep;
     static coap_endpoint_t pressure_server_ep;
@@ -104,6 +120,15 @@ PROCESS_THREAD(alarm_client, ev, data)
     static coap_message_t request[4];
 
     PROCESS_BEGIN();
+
+    coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);  
+    coap_set_header_uri_path(request, "register/");
+    const char msg[] = "actuator";
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+    rgb_led_set(RGB_LED_YELLOW);
+    COAP_BLOCKING_REQUEST(&my_server, request, client_chunk_handler_registration);
+    LOG_INFO("--Registered--\n");
 
     coap_endpoint_parse(ROTATION_SERVER_EP, strlen(ROTATION_SERVER_EP), &rotation_server_ep);
     coap_endpoint_parse(VOLTAGE_SERVER_EP, strlen(VOLTAGE_SERVER_EP), &voltage_server_ep);

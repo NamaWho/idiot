@@ -15,13 +15,13 @@ class Database:
             # Database connection setup
             try:
                 # import credentials.key file to get MySQL credentials
-                with open("private/credentials.key", "r") as file:
+                with open("private/credentials.json", "r") as file:
                     self.credentials = json.load(file)
 
-                self.connection = mysql.connector.connect(host="localhost",
-                                                user='root',
-                                                password="mypass123",
-                                                database="iot")
+                self.connection = mysql.connector.connect(host= self.credentials["MYSQL_HOST"],
+                                                user= self.credentials["MYSQL_USER"],
+                                                password= self.credentials["MYSQL_PASSWORD"],
+                                                database= self.credentials["MYSQL_DATABASE"])
                 
                 if self.connection.is_connected():
                     print("Connected to MySQL database")
