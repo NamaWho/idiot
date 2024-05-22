@@ -127,7 +127,7 @@ PROCESS_THREAD(alarm_client, ev, data)
     const char msg[] = "actuator";
     coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
     rgb_led_set(RGB_LED_YELLOW);
-    COAP_BLOCKING_REQUEST(&my_server, request, client_chunk_handler_registration);
+    COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
     LOG_INFO("--Registered--\n");
 
     coap_endpoint_parse(ROTATION_SERVER_EP, strlen(ROTATION_SERVER_EP), &rotation_server_ep);

@@ -56,7 +56,7 @@ PROCESS_THREAD(rotation_server, ev, data)
   const char msg[] = "rotation";
   coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
   rgb_led_set(RGB_LED_YELLOW);
-  COAP_BLOCKING_REQUEST(&my_server, request, client_chunk_handler);
+  COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler);
   LOG_INFO("--Registered--\n");
 
   etimer_set(&e_timer, CLOCK_SECOND * 4);
