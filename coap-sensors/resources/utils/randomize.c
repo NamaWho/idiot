@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+
 double generate_gaussian(double mean, double stddev) {
     static int haveSpare = 0;
     static double rand1, rand2;

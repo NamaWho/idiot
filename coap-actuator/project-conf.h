@@ -4,4 +4,6 @@
 
 #define LOG_LEVEL_APP LOG_LEVEL_DBG
 
+#define COAP_OBSERVE_CLIENT 1
+
 #endif

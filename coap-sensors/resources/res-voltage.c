@@ -4,6 +4,7 @@
 #include <time.h>
 #include "coap-engine.h"
 #include "utils/randomize.h"
+#include "math.h"
 
 /* Log configuration */
 #include "sys/log.h"

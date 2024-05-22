@@ -17,4 +17,6 @@ MODULES += $(CONTIKI_NG_APP_LAYER_DIR)/coap
 # Add the utils directory
 MODULES_REL += ./resources/utils
 
+LDLIBS += -lm
+
 include $(CONTIKI)/Makefile.include
