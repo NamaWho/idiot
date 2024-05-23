@@ -46,7 +46,7 @@ PROCESS_THREAD(vibration_server, ev, data)
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  LOG_INFO("Starting Server\n");
+  LOG_INFO("Starting Vibration Server\n");
 
   coap_activate_resource(&res_vibration, "vibration");
 

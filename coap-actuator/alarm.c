@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <json-c/json.h>
 #include "contiki.h"
 #include "contiki-net.h"
 #include "coap-engine.h"
 #include "coap-blocking-api.h"
 #include "sys/etimer.h"
-#include "DT_model.h"
+#include "ml/DT_model.h"
+#include "utils/json.h"
 
 // button library
 #if PLATFORM_SUPPORTS_BUTTON_HAL
@@ -19,7 +19,6 @@
 // led library
 #include "dev/leds.h"
 
-
 // include ml model to predict maintenance need
 
 /* ------- Log configuration ------- */
@@ -28,37 +27,35 @@
 #define LOG_LEVEL LOG_LEVEL_APP
 /* ------------------------------- */
 
-
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
 
-#define ROTATION_SERVER_EP "coap://[fd00::203:3:3:3]:5683" 
-#define VOLTAGE_SERVER_EP "coap://[fd00::205:5:5:5]:5683" 
-#define PRESSURE_SERVER_EP "coap://[fd00::202:2:2:2]:5683" 
-#define VIBRATION_SERVER_EP "coap://[fd00::204:4:4:4]:5683" 
-
+#define PRESSURE_SERVER_EP "coap://[fd00::202:2:2:2]:5683"
+#define ROTATION_SERVER_EP "coap://[fd00::203:3:3:3]:5683"
+#define VIBRATION_SERVER_EP "coap://[fd00::204:4:4:4]:5683"
+#define VOLTAGE_SERVER_EP "coap://[fd00::205:5:5:5]:5683"
 
 char *service_url = "/telemetry";
 
 #define TOGGLE_INTERVAL 30
 
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t rotation_server_ipaddr[1]; /* holds the server ip address */
+// static uip_ipaddr_t rotation_server_ipaddr[1]; /* holds the server ip address */
 static coap_observee_t *obs_rotation;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t voltage_server_ipaddr[1] ; /* holds the server ip address */
+// static uip_ipaddr_t voltage_server_ipaddr[1] ; /* holds the server ip address */
 static coap_observee_t *obs_voltage;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t pressure_server_ipaddr[1]; /* holds the server ip address */
+// static uip_ipaddr_t pressure_server_ipaddr[1]; /* holds the server ip address */
 static coap_observee_t *obs_pressure;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t vibration_server_ipaddr[1]; /* holds the server ip address */
+// static uip_ipaddr_t vibration_server_ipaddr[1]; /* holds the server ip address */
 static coap_observee_t *obs_vibration;
 
 /*----------------------------------------------------------------------------*/
@@ -87,38 +84,37 @@ static uint8_t error_five_count = 0;*/
  */
 static void
 notification_callback(coap_observee_t *obs, void *notification,
-                      coap_notification_flag_t flag)
-{
+                      coap_notification_flag_t flag){
   int len = 0;
   const uint8_t *payload = NULL;
 
   printf("Notification handler\n");
   printf("Observee URI: %s\n", obs->url);
-  if(notification) {
+
+  if (notification)
     len = coap_get_payload(notification, &payload);
 
-  }
-  switch(flag) {
+  switch (flag)
+  {
   case NOTIFICATION_OK:
     printf("NOTIFICATION OK: %*s\n", len, (char *)payload);
-    
-    json_object *parsed_json = json_tokener_parse((char *)payload);
 
-    if (parsed_json == NULL) {
-        printf("Error parsing JSON\n");
-        
-    }
+    // json_object *parsed_json = json_tokener_parse((char *)payload);
 
-    json_object *sensor = json_object_object_get(parsed_json, "sensor");
-    json_object *value = json_object_object_get(parsed_json, "value");
+    if (payload == NULL)
+      printf("Error parsing JSON\n");
 
-    printf("Sensor: %s\n", json_object_get_string(sensor));
+    // json_object *sensor = json_object_object_get(parsed_json, "sensor");
+    // json_object *value = json_object_object_get(parsed_json, "value");
+    char *sensor = json_parse_string((char *)payload, "sensor");
+    double value = json_parse_number((char *)payload, "value");
 
-    printf("Value: %.s\n", json_object_get_double(value));
+    printf("Sensor: %s\n", sensor);
+    printf("Value: %.2f\n", value);
 
     break;
 
-  case OBSERVE_OK: /* server accepeted observation request */
+  case OBSERVE_OK:
     printf("OBSERVE_OK: %*s\n", len, (char *)payload);
     break;
   case OBSERVE_NOT_SUPPORTED:
@@ -141,15 +137,17 @@ notification_callback(coap_observee_t *obs, void *notification,
 /*
  * Toggle the observation of the remote resource
  */
-void
-toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
+void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
 {
-  if(obs) {
+  if (obs)
+  {
     printf("Stopping observation\n");
     coap_obs_remove_observee(obs);
     obs = NULL;
-  } else {
-    printf("Starting observation\n");
+  }
+  else
+  {
+    printf("Starting observation at %s\n", res_uri);
     obs = coap_obs_request_registration(server_ep, res_uri, notification_callback, NULL);
   }
 }
@@ -186,109 +184,104 @@ void client_chunk_handler(coap_message_t *response)
     switch (json_object_get_string(sensor))
     {
     case "rotation":
-        
+
         break;
     case "voltage":
-        
+
         break;
     case "pressure":
-        
+
         break;
-    case "vibration":  
-       
+    case "vibration":
+
         break;
 
     default:
         break;
     }
-  
-    
+
+
 }*/
 
 /*void client_chunk_handler_registration(coap_message_t *response)
 {
-	const uint8_t *chunk;
+  const uint8_t *chunk;
 
-	if(response == NULL) {
-		LOG_INFO("Request timed out");
-		return;
-	}
-	registered = true;
-	int len = coap_get_payload(response, &chunk);
-	LOG_INFO("|%.*s \n", len, (char *)chunk);
+  if(response == NULL) {
+    LOG_INFO("Request timed out");
+    return;
+  }
+  registered = true;
+  int len = coap_get_payload(response, &chunk);
+  LOG_INFO("|%.*s \n", len, (char *)chunk);
 }
 */
 
 PROCESS_THREAD(alarm_client, ev, data)
 {
-   // static coap_endpoint_t main_server_ep;
-    static coap_endpoint_t rotation_server_ep;
-    static coap_endpoint_t voltage_server_ep;
-    static coap_endpoint_t pressure_server_ep;
-    static coap_endpoint_t vibration_server_ep;
+  // static coap_endpoint_t main_server_ep;
+  static coap_endpoint_t rotation_server_ep;
+  static coap_endpoint_t voltage_server_ep;
+  static coap_endpoint_t pressure_server_ep;
+  static coap_endpoint_t vibration_server_ep;
 
-    //set a timer to print the something
-    static struct etimer et;
-    
-    //static coap_message_t request[4];
+  // set a timer to print the something
+  static struct etimer et;
 
-    PROCESS_BEGIN();
+  // static coap_message_t request[4];
 
-    // set the timer
-    etimer_set(&et, 5 * CLOCK_SECOND);
+  PROCESS_BEGIN();
 
-    /*coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
-    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);  
-    coap_set_header_uri_path(request, "register/");
-    const char msg[] = "actuator";
-    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
-    rgb_led_set(RGB_LED_YELLOW);
-    COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
-    LOG_INFO("--Registered--\n");*/
+  // set the timer
+  etimer_set(&et, 5 * CLOCK_SECOND);
 
-    coap_endpoint_parse(ROTATION_SERVER_EP, strlen(ROTATION_SERVER_EP), &rotation_server_ep);
-    coap_endpoint_parse(VOLTAGE_SERVER_EP, strlen(VOLTAGE_SERVER_EP), &voltage_server_ep);
-    coap_endpoint_parse(PRESSURE_SERVER_EP, strlen(PRESSURE_SERVER_EP), &pressure_server_ep);
-    coap_endpoint_parse(VIBRATION_SERVER_EP, strlen(VIBRATION_SERVER_EP), &vibration_server_ep);
+  /*coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
+  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+  coap_set_header_uri_path(request, "register/");
+  const char msg[] = "actuator";
+  coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+  rgb_led_set(RGB_LED_YELLOW);
+  COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
+  LOG_INFO("--Registered--\n");*/
 
-    //Observe the resources
+  coap_endpoint_parse(ROTATION_SERVER_EP, strlen(ROTATION_SERVER_EP), &rotation_server_ep);
+  coap_endpoint_parse(VOLTAGE_SERVER_EP, strlen(VOLTAGE_SERVER_EP), &voltage_server_ep);
+  coap_endpoint_parse(PRESSURE_SERVER_EP, strlen(PRESSURE_SERVER_EP), &pressure_server_ep);
+  coap_endpoint_parse(VIBRATION_SERVER_EP, strlen(VIBRATION_SERVER_EP), &vibration_server_ep);
 
-    toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
-    toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
-    toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
-    toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
+  // Observe the resources
 
-    
+  toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
+  toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
+  toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
+  toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
 
-    /*COAP_BLOCKING_REQUEST(&rotation_server_ep, &request[0], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&voltage_server_ep, &request[1], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&pressure_server_ep, &request[2], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&vibration_server_ep, &request[3], client_chunk_handler);*/
+  /*COAP_BLOCKING_REQUEST(&rotation_server_ep, &request[0], client_chunk_handler);
+  COAP_BLOCKING_REQUEST(&voltage_server_ep, &request[1], client_chunk_handler);
+  COAP_BLOCKING_REQUEST(&pressure_server_ep, &request[2], client_chunk_handler);
+  COAP_BLOCKING_REQUEST(&vibration_server_ep, &request[3], client_chunk_handler);*/
 
-    while (1){
-      PROCESS_YIELD();
-      if(etimer_expired(&et)){
-        // make prediction
-        // print the prediction
+  while (1)
+  {
+    PROCESS_YIELD();
+    // if (etimer_expired(&et))
+    // {
+    //   // make prediction
+    //   // print the prediction
 
-        // prepare vector of float values
-        float values[9] = {186.505383,447.676309, 38.942684, 143.116557, 1.0, 0.0, 0.0, 1.0, 0.0};
+    //   // prepare vector of float values
+    //   float values[9] = {186.505383, 447.676309, 38.942684, 143.116557, 1.0, 0.0, 0.0, 1.0, 0.0};
 
- 
-    
-        // make prediction
-        int prediction = model_predict(values, 9);
+    //   // make prediction
+    //   int prediction = model_predict(values, 9);
 
-        // print the prediction
-        printf("Prediction: %d\n", prediction);
+    //   // print the prediction
+    //   printf("Prediction: %d\n", prediction);
 
-        // reset the timer
-        etimer_reset(&et);
-      }
-        
-  
-    }
+    //   // reset the timer
+    //   etimer_reset(&et);
+    // }
+  }
 
-
-    PROCESS_END();
+  PROCESS_END();
 }

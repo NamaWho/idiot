@@ -38,7 +38,7 @@ static void
 res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)
 {
   coap_set_header_content_format(response, APPLICATION_JSON);
-  int payload_len = snprintf((char *)buffer, preferred_size, "{\"sensor\":\"vibration\", \"value\":\"%.2f\"}", current_vibration);
+  int payload_len = snprintf((char *)buffer, preferred_size, "{\"sensor\":\"vibration\", \"value\":%.2f}", current_vibration);
   coap_set_payload(response, buffer, payload_len);
 
   LOG_INFO("Payload: %s\n", buffer);

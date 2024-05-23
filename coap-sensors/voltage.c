@@ -45,7 +45,7 @@ PROCESS_THREAD(voltage_server, ev, data)
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  LOG_INFO("Starting Server\n");
+  LOG_INFO("Starting Voltage Server\n");
 
   coap_activate_resource(&res_voltage, "voltage");
 

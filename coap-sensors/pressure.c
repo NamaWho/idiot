@@ -46,7 +46,7 @@ PROCESS_THREAD(pressure_server, ev, data)
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  LOG_INFO("Starting Server\n");
+  LOG_INFO("Starting Pressure Server\n");
 
   coap_activate_resource(&res_pressure, "pressure");
 

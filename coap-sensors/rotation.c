@@ -45,7 +45,7 @@ PROCESS_THREAD(rotation_server, ev, data)
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  LOG_INFO("Starting Server\n");
+  LOG_INFO("Starting Rotation Server\n");
 
   coap_activate_resource(&res_rotation, "rotation");
 
