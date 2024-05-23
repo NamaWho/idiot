@@ -1,12 +1,11 @@
-
 -- Create the database
-CREATE DATABASE sensor_network;
+CREATE DATABASE iot;
 
 -- Use the created database
-USE sensor_network;
+USE iot;
 
--- Create the Sensor table
-CREATE TABLE Sensor (
+-- Create the sensor table
+CREATE TABLE sensor (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(45),
     status VARCHAR(45),
@@ -14,15 +13,8 @@ CREATE TABLE Sensor (
     registration_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create the Component table
-CREATE TABLE Component (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    error_count INT DEFAULT 0,
-    last_substitution TIMESTAMP
-);
-
--- Create the Telemetry table
-CREATE TABLE Telemetry (
+-- Create the telemetry table
+CREATE TABLE telemetry (
     id INT AUTO_INCREMENT PRIMARY KEY,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     vibration FLOAT NOT NULL,
@@ -30,10 +22,3 @@ CREATE TABLE Telemetry (
     pressure FLOAT NOT NULL,
     voltage FLOAT NOT NULL
 );
-
--- Populate the Component table
-INSERT INTO Component (error_count) VALUES (0);
-INSERT INTO Component (error_count) VALUES (0);
-INSERT INTO Component (error_count) VALUES (0);
-INSERT INTO Component (error_count) VALUES (0);
-INSERT INTO Component (error_count) VALUES (0);

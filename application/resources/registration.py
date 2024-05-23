@@ -17,18 +17,21 @@ class Registration(Resource):
     vibration_address = ""
     voltage_address = ""
     rotation_address = ""
-    alarm_address = 0
+    alarm_address = ""
 
     def __init__(self, name="Registration"):
         super(Registration, self).__init__(name)
         self.payload = "Registration Resource"
+        self.database = Database()
+        self.connection = self.database.connect_db()
     
     def render_GET(self, request):
+        print("GET Registration Resource")
         self.payload = "GET Registration Resource"
         
         try:
             ip_address = request.source
-            type = request.payload
+            type = request.payload.decode("utf-8")
             status = 1
 
             if type == "pressure":
@@ -55,8 +58,8 @@ class Registration(Resource):
                 return self
 
             # Insert node info into Sensor table if not already present
-            if self.coap_server and self.coap_server.connection:
-                cursor = self.coap_server.connection.cursor()
+            if self.connection and self.connection.is_connected():
+                cursor = self.connection.cursor()
                 insert_node_query = """
                 INSERT INTO Sensor (type, status, ip_address) 
                 VALUES (%s, %s, %s)
