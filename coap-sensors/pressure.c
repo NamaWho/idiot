@@ -52,14 +52,14 @@ PROCESS_THREAD(pressure_server, ev, data)
 
   coap_activate_resource(&res_pressure, "pressure");
 
-  LOG_INFO("Starting sadsadasdsadsad Server\n");
+  
   coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
   coap_set_header_uri_path(request, "register/");
   const char msg[] = "pressure";
   coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
   leds_single_on(LEDS_YELLOW);
-  LOG_INFO("Starting ggggggggggggggggggggggggggggggggggggg Server\n");
+  
   COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler);
   LOG_INFO("--Registered--\n");
 
