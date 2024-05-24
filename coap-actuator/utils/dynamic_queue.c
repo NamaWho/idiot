@@ -17,7 +17,7 @@ void initQueue(DynamicQueue *queue) {
 }
 
 
-void enqueue(DynamicQueue *queue, int item) {
+void enqueue(DynamicQueue *queue, double item) {
     
     if (queue->size == queue->max_capacity) {
 
