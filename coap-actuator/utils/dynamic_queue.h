@@ -13,7 +13,7 @@ typedef struct {
 void initQueue(DynamicQueue *queue);
 
 // Insert an element in the dynamic queue
-void enqueue(DynamicQueue *queue, int item);
+void enqueue(DynamicQueue *queue, double item);
 
 // Empty the dynamic queue
 void freeQueue(DynamicQueue *queue);
