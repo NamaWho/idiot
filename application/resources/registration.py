@@ -2,22 +2,24 @@
 from mysql.connector import Error
 from coapthon.resources.resource import Resource
 import json
+import time
+import threading
 from models.observer import ObserveSensor
 from models.database import Database
 
 class Registration(Resource):
 
-    pressure_sensor = 0
-    vibration_sensor = 0
-    voltage_sensor = 0
-    rotation_sensor = 0
-    alarm_actuator = 0
+    sensors = {
+        "pressure": {"status": 0, "address": ""},
+        "vibration": {"status": 0, "address": ""},
+        "voltage": {"status": 0, "address": ""},
+        "rotation": {"status": 0, "address": ""}
+    }
+    actuators = {
+        "alarm": {"status": 0, "address": ""}
+    }
 
-    pressure_address = ""
-    vibration_address = ""
-    voltage_address = ""
-    rotation_address = ""
-    alarm_address = ""
+    all_sensors_registered = threading.Event()
 
     def __init__(self, name="Registration"):
         super(Registration, self).__init__(name)
@@ -34,47 +36,64 @@ class Registration(Resource):
             type = request.payload.decode("utf-8")
             status = 1
 
-            if type == "pressure":
-                self.pressure_sensor = 1
-                self.pressure_address = ip_address
-                ObserveSensor(ip_address, "pressure")
-            elif type == "vibration":
-                self.vibration_sensor = 1
-                self.vibration_address = ip_address
-                ObserveSensor(ip_address, "vibration")
-            elif type == "voltage":
-                self.voltage_sensor = 1
-                self.voltage_address = ip_address
-                ObserveSensor(ip_address, "voltage")
-            elif type == "rotation":
-                self.rotation_sensor = 1
-                self.rotation_address = ip_address
-                ObserveSensor(ip_address, "rotation")
-            elif type == "alarm":
-                self.alarm_actuator = 1
-                self.alarm_address = ip_address
-            else:
-                self.payload = "Invalid node type"
+            if type in self.sensors:
+                self.register_sensor(type, ip_address)
+            elif type in self.actuators:
+                self.register_actuator(type, ip_address)
+            else:   
+                self.payload = "Invalid sensor/actuator type"
                 return self
-
-            # Insert node info into Sensor table if not already present
-            if self.connection and self.connection.is_connected():
-                cursor = self.connection.cursor()
-                insert_node_query = """
-                INSERT INTO Sensor (type, status, ip_address) 
-                VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE ip_address=%s, type=%s, status=%s
-                """
-                cursor.execute(insert_node_query, (type, status, ip_address, type, status, ip_address))
-                self.coap_server.connection.commit()
-                cursor.close()
-
-                self.payload = "Node registration successful"
-            else:
-                self.payload = "Database connection not available"
+            
+            if type in self.sensors and type == "alarm":
+                self.wait_for_all_sensors(request)
 
         except (Error, json.JSONDecodeError) as e:
             print(f"Error processing registration: {e}")
             self.payload = f"Registration failed: {e}"
 
         return self
+    
+    def register_sensor(self, type, ip_address):
+        self.sensors[type]["status"] = 1
+        self.sensors[type]["address"] = ip_address
+        ObserveSensor(ip_address, type)
+
+        # Insert node info into Sensor table if not already present
+        if self.connection and self.connection.is_connected():
+            cursor = self.connection.cursor()
+            insert_node_query = """
+            INSERT INTO Sensor (type, status, ip_address) 
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE ip_address=%s, type=%s, status=%s
+            """
+            cursor.execute(insert_node_query, (type, 1, ip_address, type, 1, ip_address))
+            self.coap_server.connection.commit()
+            cursor.close()
+            self.payload = "Node registration successful"
+        else:
+            self.payload = "Database connection not available"
+
+        if all(sensor["status"] for sensor in self.sensors.values()):
+            self.all_sensors_registered.set()
+
+    def register_actuator(self, type, ip_address):
+        self.actuators[type]["status"] = 1
+        self.actuators[type]["address"] = ip_address
+
+    def wait_for_all_sensors(self, request):
+        self.all_sensors_registered.wait()
+
+        sensor_data = {
+            "pressure_ip": self.sensors["pressure"]["address"],
+            "vibration_ip": self.sensors["vibration"]["address"],
+            "voltage_ip": self.sensors["voltage"]["address"],
+            "rotation_ip": self.sensors["rotation"]["address"]
+        }
+
+        self.payload = json.dumps(sensor_data)
+        self.send_response(request)
+
+    def send_response(self, request):
+        response = request.response
+        response.payload = self.payload
+        self.coap_server.send_response(request, response)

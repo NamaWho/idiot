@@ -19,9 +19,6 @@
 // led library
 #include "dev/leds.h"
 
-
-// include ml model to predict maintenance need
-
 /* ------- Log configuration ------- */
 #include "sys/log.h"
 #define LOG_MODULE "App"
@@ -92,33 +89,44 @@ notification_callback(coap_observee_t *obs, void *notification,
   int len = 0;
   const uint8_t *payload = NULL;
 
-  printf("Notification handler\n");
-  printf("Observee URI: %s\n", obs->url);
-  if(notification) {
+  LOG_INFO("Notification handler\n");
+  LOG_INFO("Observee URI: %s\n", obs->url);
+
+  if (notification)
     len = coap_get_payload(notification, &payload);
 
   }
   switch(flag) {
     
   case NOTIFICATION_OK:
-    printf("NOTIFICATION OK: %*s\n", len, (char *)payload);
+    LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
+
+    if (payload == NULL)
+      LOG_INFO("Error parsing JSON\n");
+
+    char *sensor = json_parse_string((char *)payload, "sensor");
+    double value = json_parse_number((char *)payload, "value");
+
+    LOG_INFO("Sensor: %s\n", sensor);
+    LOG_INFO("Value: %.2f\n", value);
+
     break;
 
-  case OBSERVE_OK: /* server accepeted observation request */
-    printf("OBSERVE_OK: %*s\n", len, (char *)payload);
+  case OBSERVE_OK:
+    LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
     break;
   case OBSERVE_NOT_SUPPORTED:
-    printf("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
+    LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
     obs = NULL;
     break;
   case ERROR_RESPONSE_CODE:
-    printf("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
+    LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
     obs = NULL;
     break;
   case NO_REPLY_FROM_SERVER:
-    printf("NO_REPLY_FROM_SERVER: "
-           "removing observe registration with token %x%x\n",
-           obs->token[0], obs->token[1]);
+    LOG_INFO("NO_REPLY_FROM_SERVER: "
+             "removing observe registration with token %x%x\n",
+             obs->token[0], obs->token[1]);
     obs = NULL;
     break;
   }
@@ -130,126 +138,78 @@ notification_callback(coap_observee_t *obs, void *notification,
 void
 toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
 {
-  if(obs) {
-    printf("Stopping observation\n");
+  if (obs)
+  {
+    LOG_INFO("Stopping observation\n");
     coap_obs_remove_observee(obs);
     obs = NULL;
-  } else {
-    printf("Starting observation\n");
+  }
+  else
+  {
+    LOG_INFO("Starting observation at %s\n", res_uri);
     obs = coap_obs_request_registration(server_ep, res_uri, notification_callback, NULL);
   }
 }
 
-/*----------------------------------------------------------------------------*/
-/*
-void client_chunk_handler(coap_message_t *response)
+void client_chunk_handler_registration(coap_message_t *response)
 {
-    const uint8_t *chunk;
+  const uint8_t *chunk;
 
-    if (response == NULL)
-    {
-        puts("Request timed out");
-        return;
-    }
+  if (response == NULL)
+  {
+    LOG_INFO("Request timed out");
+    return;
+  }
+  registered = true;
+  int len = coap_get_payload(response, &chunk);
+  LOG_INFO("|%.*s \n", len, (char *)chunk);
 
-    int len = coap_get_payload(response, &chunk);
+  // Extract the IP addresses from the response
+  char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip");
+  char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip");
+  char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip");
+  char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip");
 
-    printf("|%.*s", len, (char *)chunk);
+  // Parse the extracted IP addresses to coap_endpoint_t structures
+  static coap_endpoint_t rotation_server_ep;
+  static coap_endpoint_t voltage_server_ep;
+  static coap_endpoint_t pressure_server_ep;
+  static coap_endpoint_t vibration_server_ep;
 
-    // i receive {"sensor": "rotation", "payload": {"standard_deviation": 0.0, "mean": 0.0}}
-    // i need to parse the json and get the values of standard_deviation and mean
-    // then i need to compare the values with the ml model to predict maintenance need
-    // if the values are greater than the threshold, i need to send a post request to the actuator to turn on the alarm
+  coap_endpoint_parse(rotation_ip, strlen(rotation_ip), &rotation_server_ep);
+  coap_endpoint_parse(voltage_ip, strlen(voltage_ip), &voltage_server_ep);
+  coap_endpoint_parse(pressure_ip, strlen(pressure_ip), &pressure_server_ep);
+  coap_endpoint_parse(vibration_ip, strlen(vibration_ip), &vibration_server_ep);
 
-    json_object *parsed_json = json_tokener_parse((char *)chunk);
-    json_object *sensor = json_object_object_get(parsed_json, "sensor");
-    json_object *payload = json_object_object_get(parsed_json, "payload");
-
-    json_object *standard_deviation = json_object_object_get(payload, "standard_deviation");
-    json_object *mean = json_object_object_get(payload, "mean");
-
-
-    switch (json_object_get_string(sensor))
-    {
-    case "rotation":
-        
-        break;
-    case "voltage":
-        
-        break;
-    case "pressure":
-        
-        break;
-    case "vibration":  
-       
-        break;
-
-    default:
-        break;
-    }
-  
-    
-}*/
-
-/*void client_chunk_handler_registration(coap_message_t *response)
-{
-	const uint8_t *chunk;
-
-	if(response == NULL) {
-		LOG_INFO("Request timed out");
-		return;
-	}
-	registered = true;
-	int len = coap_get_payload(response, &chunk);
-	LOG_INFO("|%.*s \n", len, (char *)chunk);
+  // Observe the resources
+  toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
+  toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
+  toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
+  toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
 }
-*/
 
 PROCESS_THREAD(alarm_client, ev, data)
 {
-   // static coap_endpoint_t main_server_ep;
-    static coap_endpoint_t rotation_server_ep;
-    static coap_endpoint_t voltage_server_ep;
-    static coap_endpoint_t pressure_server_ep;
-    static coap_endpoint_t vibration_server_ep;
-
-    //set a timer to print the something
-    static struct etimer et;
-    
-    //static coap_message_t request[4];
+  static coap_endpoint_t main_server_ep;
+  static struct etimer et;
+  static coap_message_t request[1];
 
     PROCESS_BEGIN();
 
-    // set the timer
-    etimer_set(&et, 5 * CLOCK_SECOND);
+  coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
 
-    /*coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
-    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);  
-    coap_set_header_uri_path(request, "register/");
-    const char msg[] = "actuator";
-    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
-    rgb_led_set(RGB_LED_YELLOW);
-    COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
-    LOG_INFO("--Registered--\n");*/
+  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+  coap_set_header_uri_path(request, "register/");
+  const char msg[] = "actuator";
+  coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+  leds_single_on(LEDS_YELLOW);
+  COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
+  LOG_INFO("--Registered--\n");
+  leds_single_off(LEDS_YELLOW);
+  leds_single_on(LEDS_GREEN);
 
-    coap_endpoint_parse(ROTATION_SERVER_EP, strlen(ROTATION_SERVER_EP), &rotation_server_ep);
-    coap_endpoint_parse(VOLTAGE_SERVER_EP, strlen(VOLTAGE_SERVER_EP), &voltage_server_ep);
-    coap_endpoint_parse(PRESSURE_SERVER_EP, strlen(PRESSURE_SERVER_EP), &pressure_server_ep);
-    coap_endpoint_parse(VIBRATION_SERVER_EP, strlen(VIBRATION_SERVER_EP), &vibration_server_ep);
-
-    //Observe the resources
-
-    toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
-    toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
-    toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
-    toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
-
-    
-
-    /*COAP_BLOCKING_REQUEST(&rotation_server_ep, &request[0], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&voltage_server_ep, &request[1], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&pressure_server_ep, &request[2], client_chunk_handler);
-    COAP_BLOCKING_REQUEST(&vibration_server_ep, &request[3], client_chunk_handler);*/
+  // set the timer
+  etimer_set(&et, 5 * CLOCK_SECOND);
 
     while (1){
       PROCESS_YIELD();
@@ -265,8 +225,8 @@ PROCESS_THREAD(alarm_client, ev, data)
         // make prediction
         int prediction = model_predict(values, 9);
 
-        // print the prediction
-        printf("Prediction: %d\n", prediction);
+    //   // print the prediction
+    //   LOG_INFO("Prediction: %d\n", prediction);
 
         // reset the timer
         etimer_reset(&et);
