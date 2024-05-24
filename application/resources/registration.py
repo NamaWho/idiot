@@ -2,6 +2,8 @@
 from mysql.connector import Error
 from coapthon.resources.resource import Resource
 import json
+import time
+import threading
 from models.observer import ObserveSensor
 from models.database import Database
 
@@ -73,8 +75,23 @@ class Registration(Resource):
             else:
                 self.payload = "Database connection not available"
 
+            if type == "alarm":
+                self.wait_for_all_sensors(request)
+
         except (Error, json.JSONDecodeError) as e:
             print(f"Error processing registration: {e}")
             self.payload = f"Registration failed: {e}"
 
         return self
+
+    def wait_for_all_sensors(self, request):
+        while not (self.pressure_sensor and self.vibration_sensor and self.voltage_sensor and self.rotation_sensor):
+            time.sleep(1)  # Wait for 1 second before checking again
+        
+        sensor_data = {
+            "pressure_ip": self.pressure_address,
+            "vibration_ip": self.vibration_address,
+            "voltage_ip": self.voltage_address,
+            "rotation_ip": self.rotation_address
+        }
+        self.payload = json.dumps(sensor_data)
