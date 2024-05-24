@@ -1,7 +1,7 @@
 from coapServer import CoAPServer
 
 def main():
-    host = "localhost"
+    host = "::"
     port = 5683
     server = CoAPServer(host, port)
 
