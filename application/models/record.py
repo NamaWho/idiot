@@ -7,72 +7,92 @@ class Record:
     The record class to store the telemetry data
     """
 
-    def __init__(self):
-        """
-        Initialize the record with default values
-        """
-        self.vibration = None
-        self.rotation = None
-        self.pressure = None
-        self.voltage = None
+    vibration = 0
+    rotation = 0
+    pressure = 0
+    voltage = 0
 
-    def __init__(self, vibration, rotation, pressure, voltage):
+    @classmethod
+    def set_vibration(cls, value):
         """
-        Initialize the record with the provided values
+        Set the vibration value
 
-        :param vibration: The vibration value
-        :param rotation: The rotation value
-        :param pressure: The pressure value
-        :param voltage: The voltage value
+        :param value: The vibration value
 
         :return: None
         """
-        self.vibration = vibration
-        self.rotation = rotation
-        self.pressure = pressure
-        self.voltage = voltage
+        cls.vibration = value
+        cls.check_all_values()
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    @classmethod
+    def set_rotation(cls, value):
         """
-        Set the value of the attribute
+        Set the rotation value
 
-        :param name: The name of the attribute
-        :param value: The value of the attribute
+        :param value: The rotation value
 
         :return: None
         """
-        # if all the values are present, call insert method
-        if all([self.vibration, self.rotation, self.pressure, self.voltage]):
-            self.insert_telemetry()
-            # flush the values
-            self.vibration = None
-            self.rotation = None
-            self.pressure = None
-            self.voltage = None
-        else:
-            super().__setattr__(name, value)
+        cls.rotation = value
+        cls.check_all_values()
+
+    @classmethod
+    def set_pressure(cls, value):
+        """
+        Set the pressure value
+
+        :param value: The pressure value
+
+        :return: None
+        """
+        cls.pressure = value
+        cls.check_all_values()
+
+    @classmethod
+    def set_voltage(cls, value):
+        """
+        Set the voltage value
+
+        :param value: The voltage value
+
+        :return: None
+        """
+        cls.voltage = value
+        cls.check_all_values()
+
+    @staticmethod
+    def check_all_values():
+        if (all([Record.vibration, Record.rotation, Record.pressure, Record.voltage])):
+            Record.insert_telemetry()
         
-    def __str__(self):
-        """
-        Return the string representation of the record
-
-        :return: The string representation of the record
-        """
-        return f"Vibration: {self.vibration}, Rotation: {self.rotation}, Pressure: {self.pressure}, Voltage: {self.voltage}"
-    
-    def insert_telemetry(self):
+    @staticmethod
+    def insert_telemetry():
         """
         Insert the record into the database
 
         :return: None
         """
-        self.db = Database()
-        self.connection = self.db.connect_db()
+        db = Database()
+        connection = db.connect_db()
 
-        with self.connection.cursor() as cursor:
-            cursor = self.connection.cursor()
-            sql = "INSERT INTO Telemetry (vibration, rotation, pressure, voltage) VALUES (%s, %s, %s, %s)"
-            cursor.execute(sql, (self.vibration, self.rotation, self.pressure, self.voltage))
-            self.connection.commit()
-            print(f"Record inserted: {self}")
-            self.connection.close()
+        try:
+            with connection.cursor() as cursor:
+                cursor = connection.cursor()
+                sql = "INSERT INTO Telemetry (vibration, rotation, pressure, voltage) VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql, (Record.vibration, Record.rotation, Record.pressure, Record.voltage))
+                connection.commit()
+                print(f"Record inserted: {Record.__str__()}")
+                connection.close()
+        except Exception as e:
+            print(f"Error inserting record: {e}")
+            connection.close()
+
+    @staticmethod
+    def __str__():
+        """
+        Return the string representation of the record
+
+        :return: The string representation of the record
+        """
+        return f"Vibration: {Record.vibration}, Rotation: {Record.rotation}, Pressure: {Record.pressure}, Voltage: {Record.voltage}"
+    

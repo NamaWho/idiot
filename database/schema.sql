@@ -6,10 +6,10 @@ USE iot;
 
 -- Create the sensor table
 CREATE TABLE sensor (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    ip_address VARCHAR(45) PRIMARY KEY,
+    port INT,
     type VARCHAR(45),
     status VARCHAR(45),
-    ip_address VARCHAR(45),
     registration_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

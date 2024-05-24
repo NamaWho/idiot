@@ -10,13 +10,13 @@ from models.database import Database
 class Registration(Resource):
 
     sensors = {
-        "pressure": {"status": 0, "address": ""},
-        "vibration": {"status": 0, "address": ""},
-        "voltage": {"status": 0, "address": ""},
-        "rotation": {"status": 0, "address": ""}
+        "pressure": {"status": 0, "address": "", "port": 0},
+        "vibration": {"status": 0, "address": "", "port": 0},
+        "voltage": {"status": 0, "address": "", "port": 0},
+        "rotation": {"status": 0, "address": "", "port": 0}
     }
     actuators = {
-        "alarm": {"status": 0, "address": ""}
+        "alarm": {"status": 0, "address": "", "port": 0}
     }
 
     all_sensors_registered = threading.Event()
@@ -32,14 +32,13 @@ class Registration(Resource):
         self.payload = "GET Registration Resource"
         
         try:
-            ip_address = request.source
-            type = request.payload.decode("utf-8")
-            status = 1
+            ip_port = request.source
+            type = request.payload
 
             if type in self.sensors:
-                self.register_sensor(type, ip_address)
+                self.register_sensor(type, ip_port)
             elif type in self.actuators:
-                self.register_actuator(type, ip_address)
+                self.register_actuator(type, ip_port)
             else:   
                 self.payload = "Invalid sensor/actuator type"
                 return self
@@ -53,41 +52,48 @@ class Registration(Resource):
 
         return self
     
-    def register_sensor(self, type, ip_address):
+    def register_sensor(self, type, ip_port):
         self.sensors[type]["status"] = 1
-        self.sensors[type]["address"] = ip_address
-        ObserveSensor(ip_address, type)
+        self.sensors[type]["address"] = ip_port[0]
+        self.sensors[type]["port"] = ip_port[1]
+        ObserveSensor(ip_port, type)
 
-        # Insert node info into Sensor table if not already present
-        if self.connection and self.connection.is_connected():
-            cursor = self.connection.cursor()
-            insert_node_query = """
-            INSERT INTO Sensor (type, status, ip_address) 
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE ip_address=%s, type=%s, status=%s
-            """
-            cursor.execute(insert_node_query, (type, 1, ip_address, type, 1, ip_address))
-            self.coap_server.connection.commit()
-            cursor.close()
-            self.payload = "Node registration successful"
-        else:
-            self.payload = "Database connection not available"
+        print(f"Registered {type} sensor at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
+        try:
+            # Insert node info into Sensor table if not already present
+            if self.connection and self.connection.is_connected():
+                cursor = self.connection.cursor()
+                insert_node_query = """
+                INSERT INTO sensor (ip_address, port, type, status) 
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE  ip_address = %s, port = %s, type = %s, status = %s
+                """
+                cursor.execute(insert_node_query, (ip_port[0], ip_port[1], type, 1, ip_port[0], ip_port[1], type, 1))
+                self.connection.commit()
+                cursor.close()
+                self.payload = "Node registration successful"
+            else:
+                self.payload = "Database connection not available"
+        except Error as e:
+            print(f"Error registering sensor: {e}")
+            self.payload = f"Sensor registration failed: {e}"
 
         if all(sensor["status"] for sensor in self.sensors.values()):
             self.all_sensors_registered.set()
 
-    def register_actuator(self, type, ip_address):
+    def register_actuator(self, type, ip_port):
         self.actuators[type]["status"] = 1
-        self.actuators[type]["address"] = ip_address
+        self.actuators[type]["address"] = ip_port[0]
+        self.actuators[type]["port"] = ip_port[1]
 
     def wait_for_all_sensors(self, request):
         self.all_sensors_registered.wait()
 
         sensor_data = {
-            "pressure_ip": self.sensors["pressure"]["address"],
-            "vibration_ip": self.sensors["vibration"]["address"],
-            "voltage_ip": self.sensors["voltage"]["address"],
-            "rotation_ip": self.sensors["rotation"]["address"]
+            "pressure_ip_port": self.sensors["pressure"]["address"] + ":" + str(self.sensors["pressure"]["port"]),
+            "vibration_ip_port": self.sensors["vibration"]["address"] + ":" + str(self.sensors["vibration"]["port"]),
+            "voltage_ip_port": self.sensors["voltage"]["address"] + ":" + str(self.sensors["voltage"]["port"]),
+            "rotation_ip_port": self.sensors["rotation"]["address"] + ":" + str(self.sensors["rotation"]["port"])
         }
 
         self.payload = json.dumps(sensor_data)

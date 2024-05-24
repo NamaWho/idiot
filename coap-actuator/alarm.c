@@ -165,10 +165,10 @@ void client_chunk_handler_registration(coap_message_t *response)
   LOG_INFO("|%.*s \n", len, (char *)chunk);
 
   // Extract the IP addresses from the response
-  char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip");
-  char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip");
-  char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip");
-  char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip");
+  char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip_port");
+  char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip_port");
+  char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip_port");
+  char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip_port");
 
   // Parse the extracted IP addresses to coap_endpoint_t structures
   static coap_endpoint_t rotation_server_ep;
