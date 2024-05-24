@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <json-c/json.h>
 #include "contiki.h"
 #include "contiki-net.h"
 #include "coap-engine.h"
 #include "coap-blocking-api.h"
 #include "sys/etimer.h"
 #include "DT_model.h"
+#include "json.h"
 
 // button library
 #if PLATFORM_SUPPORTS_BUTTON_HAL
@@ -40,25 +40,26 @@ char *service_url = "/telemetry";
 #define TOGGLE_INTERVAL 30
 
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t rotation_server_ipaddr[1]; /* holds the server ip address */
+
 static coap_observee_t *obs_rotation;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t voltage_server_ipaddr[1] ; /* holds the server ip address */
+
 static coap_observee_t *obs_voltage;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t pressure_server_ipaddr[1]; /* holds the server ip address */
+
 static coap_observee_t *obs_pressure;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-//static uip_ipaddr_t vibration_server_ipaddr[1]; /* holds the server ip address */
+
 static coap_observee_t *obs_vibration;
 
 /*----------------------------------------------------------------------------*/
+
 
 PROCESS(alarm_client, "Alarm Actuator Client");
 AUTOSTART_PROCESSES(&alarm_client);
@@ -77,6 +78,7 @@ static uint8_t error_four_count = 0;
 static uint8_t error_five_count = 0;*/
 
 /* ----------------------------------- */
+static bool registered = false;
 
 /*----------------------------------------------------------------------------*/
 /*
@@ -92,7 +94,7 @@ notification_callback(coap_observee_t *obs, void *notification,
   LOG_INFO("Notification handler\n");
   LOG_INFO("Observee URI: %s\n", obs->url);
 
-  if (notification)
+  if (notification){
     len = coap_get_payload(notification, &payload);
 
   }
@@ -101,8 +103,8 @@ notification_callback(coap_observee_t *obs, void *notification,
   case NOTIFICATION_OK:
     LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
-    if (payload == NULL)
-      LOG_INFO("Error parsing JSON\n");
+    /*if (payload == NULL)
+      LOG_INFO("Error parsing JSON\n");*/
 
     char *sensor = json_parse_string((char *)payload, "sensor");
     double value = json_parse_number((char *)payload, "value");
@@ -226,7 +228,7 @@ PROCESS_THREAD(alarm_client, ev, data)
         int prediction = model_predict(values, 9);
 
     //   // print the prediction
-    //   LOG_INFO("Prediction: %d\n", prediction);
+        LOG_INFO("Prediction: %d\n", prediction);
 
         // reset the timer
         etimer_reset(&et);
@@ -234,7 +236,6 @@ PROCESS_THREAD(alarm_client, ev, data)
         
   
     }
-
 
     PROCESS_END();
 }

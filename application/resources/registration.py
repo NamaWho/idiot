@@ -33,7 +33,7 @@ class Registration(Resource):
         
         try:
             ip_address = request.source
-            type = request.payload.decode("utf-8")
+            type = request.payload #.decode("utf-8")
             status = 1
 
             if type in self.sensors:
