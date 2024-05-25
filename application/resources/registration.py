@@ -43,7 +43,7 @@ class Registration(Resource):
                 self.payload = "Invalid sensor/actuator type"
                 return self
             
-            if type in self.sensors and type == "alarm":
+            if type in self.actuators and type == "alarm":
                 self.wait_for_all_sensors(request)
 
         except (Error, json.JSONDecodeError) as e:
@@ -59,6 +59,17 @@ class Registration(Resource):
         ObserveSensor(ip_port, type)
 
         print(f"Registered {type} sensor at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
+        self.insert_device(type, ip_port)
+
+    def register_actuator(self, type, ip_port):
+        self.actuators[type]["status"] = 1
+        self.actuators[type]["address"] = ip_port[0]
+        self.actuators[type]["port"] = ip_port[1]
+
+        print(f"Registered {type} actuator at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
+        self.insert_device(type, ip_port)
+
+    def insert_device(self, type, ip_port):
         try:
             # Insert node info into Sensor table if not already present
             if self.connection and self.connection.is_connected():
@@ -80,11 +91,6 @@ class Registration(Resource):
 
         if all(sensor["status"] for sensor in self.sensors.values()):
             self.all_sensors_registered.set()
-
-    def register_actuator(self, type, ip_port):
-        self.actuators[type]["status"] = 1
-        self.actuators[type]["address"] = ip_port[0]
-        self.actuators[type]["port"] = ip_port[1]
 
     def wait_for_all_sensors(self, request):
         self.all_sensors_registered.wait()

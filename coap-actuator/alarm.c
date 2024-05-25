@@ -56,13 +56,12 @@ static coap_observee_t *obs_vibration;
 
 /*----------------------------------------------------------------------------*/
 
-static char *service_url = "/telemetry";
+// static char *service_url = "/telemetry";
 
 static bool registered = false;
 
 PROCESS(alarm_client, "Alarm Actuator Client");
 AUTOSTART_PROCESSES(&alarm_client);
-
 
 /*------------------------SENSOR VALUES---------------------------------------------*/
 static DynamicQueue rotation_queue;
@@ -235,7 +234,7 @@ PROCESS_THREAD(alarm_client, ev, data)
 
   coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
   coap_set_header_uri_path(request, "register/");
-  const char msg[] = "actuator";
+  const char msg[] = "alarm";
   coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
   leds_single_on(LEDS_YELLOW);
   COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
@@ -249,7 +248,7 @@ PROCESS_THREAD(alarm_client, ev, data)
     while (1){
       PROCESS_YIELD();
 
-      if(etimer_expired(&et) || etimer_expired(&check_timer){
+      if(etimer_expired(&et) || etimer_expired(&check_timer)){
 
         // if all the queues have 24 elements, make a prediction
 

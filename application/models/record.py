@@ -64,6 +64,10 @@ class Record:
     def check_all_values():
         if (all([Record.vibration, Record.rotation, Record.pressure, Record.voltage])):
             Record.insert_telemetry()
+            Record.vibration = 0
+            Record.rotation = 0
+            Record.pressure = 0
+            Record.voltage = 0
         
     @staticmethod
     def insert_telemetry():
