@@ -7,6 +7,7 @@ from coapthon.client.helperclient import HelperClient
 from coapthon.utils import parse_uri
 from models.database import Database
 from models.record import Record
+import re
 
 class ObserveSensor:
 
@@ -20,7 +21,14 @@ class ObserveSensor:
         self.client.observe(self.resource, self.observer)
     
     def observer(self, response):
-        data = json.loads(response.payload)
+
+        print("Observer response:", response.payload)
+
+        fix_format = re.sub(r'(\d+),(\d+)', r'\1.\2', response.payload)
+
+        print("Fixed format:", fix_format)
+
+        data = json.loads(fix_format)
         
         try:
             if self.resource == "vibration":

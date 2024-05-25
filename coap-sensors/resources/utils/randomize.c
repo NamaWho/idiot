@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 
 double generate_gaussian(double mean, double stddev) {
     static int haveSpare = 0;
     static double rand1, rand2;
+
+    // set the seed
+    srand(time(NULL));
 
     if(haveSpare) {
         haveSpare = 0;

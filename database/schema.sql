@@ -1,8 +1,14 @@
+-- Drop the database if it exists
+DROP DATABASE IF EXISTS iot;
+
 -- Create the database
 CREATE DATABASE iot;
 
 -- Use the created database
 USE iot;
+
+-- Drop the sensor table if it exists
+DROP TABLE IF EXISTS sensor;
 
 -- Create the sensor table
 CREATE TABLE sensor (
@@ -12,6 +18,9 @@ CREATE TABLE sensor (
     status VARCHAR(45),
     registration_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Drop the telemetry table if it exists
+DROP TABLE IF EXISTS telemetry;
 
 -- Create the telemetry table
 CREATE TABLE telemetry (

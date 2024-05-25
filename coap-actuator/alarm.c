@@ -191,18 +191,41 @@ void client_chunk_handler_registration(coap_message_t *response)
 
   if (response == NULL)
   {
-    LOG_INFO("Request timed out");
+    LOG_INFO("Timeout expired\n");
     return;
   }
-  registered = true;
+ 
   int len = coap_get_payload(response, &chunk);
+
+  // if chunck length is not > 0, the response is empty
+  if(len <= 0){
+    LOG_INFO("Empty response\n");
+    return;
+  }
+
   LOG_INFO("|%.*s \n", len, (char *)chunk);
+ 
+
+  // If the registration is successful, extract the IP addresses
 
   // Extract the IP addresses from the response
   char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip_port");
   char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip_port");
   char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip_port");
   char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip_port");
+
+  // if any of the IP addresses is null, return
+  if(rotation_ip == NULL || voltage_ip == NULL || pressure_ip == NULL || vibration_ip == NULL){
+    LOG_INFO("Invalid IP addresses\n");
+    return;
+  }
+
+  LOG_INFO("Rotation IP: %s\n", rotation_ip);
+  LOG_INFO("Voltage IP: %s\n", voltage_ip);
+  LOG_INFO("Pressure IP: %s\n", pressure_ip);
+  LOG_INFO("Vibration IP: %s\n", vibration_ip);
+
+  registered = true;
 
   // Parse the extracted IP addresses to coap_endpoint_t structures
   static coap_endpoint_t rotation_server_ep;
@@ -238,6 +261,7 @@ PROCESS_THREAD(alarm_client, ev, data)
   coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
   leds_single_on(LEDS_YELLOW);
   COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
+  
   LOG_INFO("--Registered--\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);

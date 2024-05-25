@@ -82,7 +82,7 @@ class Record:
         try:
             with connection.cursor() as cursor:
                 cursor = connection.cursor()
-                sql = "INSERT INTO Telemetry (vibration, rotation, pressure, voltage) VALUES (%s, %s, %s, %s)"
+                sql = "INSERT INTO telemetry (vibration, rotation, pressure, voltage) VALUES (%s, %s, %s, %s)"
                 cursor.execute(sql, (Record.vibration, Record.rotation, Record.pressure, Record.voltage))
                 connection.commit()
                 print(f"Record inserted: {Record.__str__()}")
