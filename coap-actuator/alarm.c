@@ -33,6 +33,13 @@
 
 static int max_registration_retry = MAX_REGISTRATION_RETRY;
 
+static int status = 0;
+
+static double rotation_status = 0.0;
+static double voltage_status = 0.0;
+static double pressure_status = 0.0;
+static double vibration_status = 0.0;
+
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
 
@@ -194,11 +201,16 @@ notification_server_callback(coap_observee_t *obs, void *notification,
   const uint8_t *payload = NULL;
 
   LOG_INFO("Notification handler\n");
-  LOG_INFO("Observee URI: %s\n", obs->url);
+  LOG_INFO("Observee URI (server): %s\n", obs->url);
 
   if (notification)
   {
     len = coap_get_payload(notification, &payload);
+  }
+  if (len <= 0)
+  {
+    LOG_ERR("Empty payload\n");
+    return;
   }
 
   switch (flag)
@@ -207,23 +219,52 @@ notification_server_callback(coap_observee_t *obs, void *notification,
   case NOTIFICATION_OK:
     LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
-    // Extract the IP addresses from the response
-    char *rotation_ip = json_parse_string((char *)payload, "rotation_ip_port");
-    char *voltage_ip = json_parse_string((char *)payload, "voltage_ip_port");
-    char *pressure_ip = json_parse_string((char *)payload, "pressure_ip_port");
-    char *vibration_ip = json_parse_string((char *)payload, "vibration_ip_port");
+    // Parse the response to get the IP addresses of the sensors
+    char *rotation_sensor = json_parse_string((char *)payload, "rotation");
+    char *voltage_sensor = json_parse_string((char *)payload, "voltage");
+    char *pressure_sensor = json_parse_string((char *)payload, "pressure");
+    char *vibration_sensor = json_parse_string((char *)payload, "vibration");
 
-    // if any of the IP addresses is null, return
-    if (rotation_ip == NULL || voltage_ip == NULL || pressure_ip == NULL || vibration_ip == NULL)
+    if (rotation_sensor == NULL || voltage_sensor == NULL || pressure_sensor == NULL || vibration_sensor == NULL)
     {
-      LOG_INFO("Invalid IP addresses\n");
-      return;
+      LOG_ERR("Wrong data received:: rotation_sensor: %s, voltage_sensor: %s, pressure_sensor: %s, vibration_sensor: %s\n", rotation_sensor, voltage_sensor, pressure_sensor, vibration_sensor);
+      break;
     }
 
-    LOG_INFO("Rotation IP: %s\n", rotation_ip);
-    LOG_INFO("Voltage IP: %s\n", voltage_ip);
-    LOG_INFO("Pressure IP: %s\n", pressure_ip);
-    LOG_INFO("Vibration IP: %s\n", vibration_ip);
+
+    // Extract the IP addresses from the response
+    char *rotation_ip_port = json_parse_string((char *)rotation_sensor, "ip_port");
+    char *voltage_ip_port = json_parse_string((char *)voltage_sensor, "ip_port");
+    char *pressure_ip_port = json_parse_string((char *)pressure_sensor, "ip_port");
+    char *vibration_ip_port = json_parse_string((char *)vibration_sensor, "ip_port");
+
+
+    // if any of the IP addresses is null, return
+    if (rotation_ip_port == NULL || voltage_ip_port == NULL || pressure_ip_port == NULL || vibration_ip_port == NULL)
+    {
+      LOG_ERR("Wrong data received:: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
+      break;
+    }
+
+    // parse the strings to get the status of the sensors
+    double new_rotation_status = json_parse_number((char *)rotation_sensor, "status");
+    double new_voltage_status = json_parse_number((char *)voltage_sensor, "status");
+    double new_pressure_status = json_parse_number((char *)pressure_sensor, "status");
+    double new_vibration_status = json_parse_number((char *)vibration_sensor, "status");
+
+    
+
+    // if the status of the sensors is different from the previous one, update the status
+    LOG_INFO("Rotation status: %.2f\n", new_rotation_status);
+    LOG_INFO("Voltage status: %.2f\n", new_voltage_status);
+    LOG_INFO("Pressure status: %.2f\n", new_pressure_status);
+    LOG_INFO("Vibration status: %.2f\n", new_vibration_status);
+
+
+    LOG_INFO("Rotation IP: %s\n", rotation_ip_port);
+    LOG_INFO("Voltage IP: %s\n", voltage_ip_port);
+    LOG_INFO("Pressure IP: %s\n", pressure_ip_port);
+    LOG_INFO("Vibration IP: %s\n", vibration_ip_port);
 
     // Parse the extracted IP addresses to coap_endpoint_t structures
     static coap_endpoint_t rotation_server_ep;
@@ -231,19 +272,43 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     static coap_endpoint_t pressure_server_ep;
     static coap_endpoint_t vibration_server_ep;
 
-    coap_endpoint_parse(rotation_ip, strlen(rotation_ip), &rotation_server_ep);
-    coap_endpoint_parse(voltage_ip, strlen(voltage_ip), &voltage_server_ep);
-    coap_endpoint_parse(pressure_ip, strlen(pressure_ip), &pressure_server_ep);
-    coap_endpoint_parse(vibration_ip, strlen(vibration_ip), &vibration_server_ep);
+    coap_endpoint_parse(rotation_ip_port, strlen(rotation_ip_port), &rotation_server_ep);
+    coap_endpoint_parse(voltage_ip_port, strlen(voltage_ip_port), &voltage_server_ep);
+    coap_endpoint_parse(pressure_ip_port, strlen(pressure_ip_port), &pressure_server_ep);
+    coap_endpoint_parse(vibration_ip_port, strlen(vibration_ip_port), &vibration_server_ep);
 
     // Observe the resources
-    toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
-    toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
-    toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
-    toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
 
-    // once obtained the IP addresses, stop registration
-    toggle_server_observation(obs_control, &main_server_ep, "/control");
+    if (new_rotation_status != rotation_status)
+    {
+      rotation_status = new_rotation_status;
+      toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
+    }
+    if (new_voltage_status != voltage_status)
+    {
+      voltage_status = new_voltage_status;
+      toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
+    }
+    if (new_pressure_status != pressure_status)
+    {
+      pressure_status = new_pressure_status;
+      toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
+    }
+    if (new_vibration_status != vibration_status)
+    {
+      vibration_status = new_vibration_status;
+      toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
+    }
+
+    // If all sensors are active, activate the actuator
+    if (rotation_status == 1 && voltage_status == 1 && pressure_status == 1 && vibration_status == 1)
+    {
+      status = 1;
+    }
+    else
+    {
+      status = 0;
+    }
 
     break;
 
@@ -288,13 +353,7 @@ static void client_chunk_handler_registration(coap_message_t *response)
   {
 
     LOG_ERR("Request timed out\n");
-  }
-  else if (response->code != 65)
-  {
-
-    LOG_ERR("Error: %d\n", response->code);
-  }
-  else
+  }else
   {
 
     LOG_INFO("Registration successful\n");
@@ -311,7 +370,7 @@ static void client_chunk_handler_registration(coap_message_t *response)
 
 PROCESS_THREAD(alarm_client, ev, data)
 {
-  static struct etimer et, sleep_timer, check_timer;
+  static struct etimer et, sleep_timer;
   static coap_message_t request[1];
 
   PROCESS_BEGIN();
@@ -360,7 +419,7 @@ PROCESS_THREAD(alarm_client, ev, data)
 
       // if all the queues have 24 elements, make a prediction
 
-      if (rotation_queue.size == 24 && voltage_queue.size == 24 && pressure_queue.size == 24 && vibration_queue.size == 24)
+      if (rotation_queue.size == 24 && voltage_queue.size == 24 && pressure_queue.size == 24 && vibration_queue.size == 24 && status == 1)
       {
 
         // prepare vector of float values: calculate the mean of the values in the queue
@@ -389,14 +448,9 @@ PROCESS_THREAD(alarm_client, ev, data)
 
         LOG_INFO("Prediction: %d\n", prediction);
 
-        // reset the timer
-        etimer_reset(&et);
       }
-      else
-      {
-        // set a smaller timer to check the values again
-        etimer_set(&check_timer, 2 * CLOCK_SECOND);
-      }
+      // reset the timer
+      etimer_reset(&et);
     }
   }
 

@@ -1,7 +1,7 @@
 from coapServer import CoAPServer
-import threading
+
 #import coapClient
-import time
+
 
 def main():
     host = "::"

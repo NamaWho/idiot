@@ -22,6 +22,9 @@ class ObserveSensor:
     
     def observer(self, response):
 
+        if response.payload is None:
+            return
+
         print("Observer response:", response.payload)
 
         fix_format = re.sub(r'(\d+),(\d+)', r'\1.\2', response.payload)

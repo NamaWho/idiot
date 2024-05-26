@@ -17,24 +17,23 @@
 
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-static void res_event_handler(void);
+//static void res_event_handler(void);
 
-EVENT_RESOURCE(res_voltage_status,
-               "title=\"Observable resource\";voltage_status",
+RESOURCE(res_voltage_status,
+               "title=\"Coap Voltage Status\";rt=\"voltage_status\"",
                res_get_handler,
                NULL,
                NULL,
-               NULL,
-               res_event_handler);
+               NULL);
 
 
-static void
+/* static void
 res_event_handler(void)
 {
     
     LOG_INFO("Payload to be sent: {\"sensor\":\"voltage\", \"status\":%d}\n", status);
     coap_notify_observers(&res_voltage_status);
-}
+}*/
 
 static void
 res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)

@@ -17,24 +17,23 @@
 
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-static void res_event_handler(void);
+//static void res_event_handler(void);
 
-EVENT_RESOURCE(res_rotation_status,
-               "title=\"Observable resource\";rotation_status",
+RESOURCE(res_rotation_status,
+               "title=\"Coap Rotation Status\";rt=\"rotation_status\"",
                res_get_handler,
                NULL,
                NULL,
-               NULL,
-               res_event_handler);
+               NULL);
 
 
-static void
+/*static void
 res_event_handler(void)
 {
     
     LOG_INFO("Payload to be sent: {\"sensor\":\"rotation\", \"status\":%d}\n", status);
     coap_notify_observers(&res_rotation_status);
-}
+}*/
 
 static void
 res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)

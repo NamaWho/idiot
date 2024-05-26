@@ -4,7 +4,7 @@ from coapthon.resources.resource import Resource
 import json
 import time
 import threading
-from models.observer import ObserveSensor, ObserveSensorStaus
+from models.observer import ObserveSensor #, ObserveSensorStaus
 from models.database import Database
 
 class Registration(Resource):
@@ -41,8 +41,9 @@ class Registration(Resource):
                
         except (Error, json.JSONDecodeError) as e:
             print(f"Error processing registration: {e}")
+            self.payload = None
         
-        self.payload = None
+        self.payload = "Registration Successful"
         return self
     
     def register_sensor(self, type, ip_port):
@@ -53,7 +54,7 @@ class Registration(Resource):
         self.sensors[type]["address"] = ip_port[0]
         self.sensors[type]["port"] = ip_port[1]
         ObserveSensor(ip_port, type)
-        ObserveSensorStaus(ip_port, type+"/status")
+        #ObserveSensorStaus(ip_port, type+"/status")
 
         print(f"Registered {type} sensor at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
 

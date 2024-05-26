@@ -17,24 +17,23 @@
 
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-static void res_event_handler(void);
+//static void res_event_handler(void);
 
-EVENT_RESOURCE(res_pressure_status,
-               "title=\"Observable resource\";pressure_status",
+RESOURCE(res_pressure_status,
+               "title=\"Coap Pressure Status\";rt=\"pressure_status\"",
                res_get_handler,
                NULL,
                NULL,
-               NULL,
-               res_event_handler);
+               NULL);
 
 
-static void
+/*static void
 res_event_handler(void)
 {
     
     LOG_INFO("Payload to be sent: {\"sensor\":\"pressure\", \"status\":%d}\n", status);
     coap_notify_observers(&res_pressure_status);
-}
+}*/
 
 static void
 res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)

@@ -22,7 +22,7 @@ class CoAPServer(CoAP):
         print(host, port)
         self.add_resource("register/", Registration())
         self.add_resource("telemetry/", Telemetry())
-        self.add_resource("control/", Control())
+        self.add_resource("control/", Control(coap_server=self))
 
         self.db = Database()
         self.connection = self.db.connect_db()

@@ -20,10 +20,8 @@ void initQueue(DynamicQueue *queue) {
 void enqueue(DynamicQueue *queue, double item) {
     
     if (queue->size == queue->max_capacity) {
-
-        freeQueue(queue); //free the queue
-        
-        initQueue(queue); //reinitialize the queue
+        // reset the size of the queue
+        queue->size = 0;
     }
 
     // Insert the element in the queue

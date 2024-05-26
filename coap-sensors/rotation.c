@@ -26,13 +26,7 @@ void client_chunk_handler(coap_message_t *response)
   {
 
     LOG_ERR("Request timed out\n");
-  }
-  else if (response->code != 65)
-  {
-
-    LOG_ERR("Error: %d\n", response->code);
-  }
-  else
+  }else
   {
 
     LOG_INFO("Registration successful\n");
