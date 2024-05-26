@@ -222,6 +222,10 @@ notification_server_callback(coap_observee_t *obs, void *notification,
   toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
   toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
   toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
+
+
+  // once obtained the IP addresses, stop registration
+  toggle_server_observation(obs_control, &main_server_ep, "/control");
     
     break;
 
@@ -308,7 +312,7 @@ void client_chunk_handler_registration(coap_message_t *response)
 PROCESS_THREAD(alarm_client, ev, data)
 {
   static coap_endpoint_t main_server_ep;
-  static struct etimer et, check_timer;
+  static struct etimer et, sleep_timer;
   static coap_message_t request[1];
 
     PROCESS_BEGIN();
@@ -346,7 +350,7 @@ PROCESS_THREAD(alarm_client, ev, data)
 
 
   // set the timer
-  etimer_set(&et, 5 * CLOCK_SECOND);
+  etimer_set(&et, 60 * CLOCK_SECOND);
 
     while (1){
       PROCESS_YIELD();
