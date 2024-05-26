@@ -355,7 +355,7 @@ PROCESS_THREAD(alarm_client, ev, data)
     while (1){
       PROCESS_YIELD();
 
-      if(etimer_expired(&et) || etimer_expired(&check_timer)){
+      if(etimer_expired(&et)){
 
         // if all the queues have 24 elements, make a prediction
 
