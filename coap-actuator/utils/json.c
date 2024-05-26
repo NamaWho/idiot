@@ -90,6 +90,35 @@ double json_parse_number(const char* json, const char* key) {
 }
 
 /**
+ * @brief Parse a JSON object from a JSON object string by key.
+ * 
+ * @param json The JSON object string.
+ * @param key The key to find the JSON object for.
+ * @return char* The JSON object associated with the key, or NULL if not found.
+ */
+char* json_parse_object(const char* json, const char* key) {
+    const char* key_start = strstr(json, key);
+    if (key_start == NULL) {
+        return NULL;
+    }
+    key_start += strlen(key) + 2;
+    const char* value_end = strchr(key_start, '}');
+    if (value_end == NULL) {
+        return NULL;
+    }
+
+    size_t value_length = value_end - key_start + 1;
+    char* value = (char*)malloc(value_length + 1);
+    if (value == NULL) {
+        return NULL;
+    }
+
+    strncpy(value, key_start, value_length);
+    value[value_length] = '\0';
+    return value;
+}
+
+/**
  * @brief Free the memory allocated for a JSON string.
  * 
  * @param json The JSON string to free.

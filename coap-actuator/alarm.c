@@ -45,7 +45,6 @@ static double vibration_status = 0.0;
 
 #define TOGGLE_INTERVAL 30
 
-
 /*----------------------------------------------------------------------------*/
 
 static coap_endpoint_t main_server_ep;
@@ -193,9 +192,8 @@ static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep,
   }
 }
 
-void
-notification_server_callback(coap_observee_t *obs, void *notification,
-                             coap_notification_flag_t flag)
+void notification_server_callback(coap_observee_t *obs, void *notification,
+                                  coap_notification_flag_t flag)
 {
   int len = 0;
   const uint8_t *payload = NULL;
@@ -220,17 +218,17 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
     // Parse the response to get the IP addresses of the sensors
-    char *rotation_sensor = json_parse_string((char *)payload, "rotation");
-    char *voltage_sensor = json_parse_string((char *)payload, "voltage");
-    char *pressure_sensor = json_parse_string((char *)payload, "pressure");
-    char *vibration_sensor = json_parse_string((char *)payload, "vibration");
+    char *rotation_sensor = json_parse_object((char *)payload, "rotation");
+    char *voltage_sensor = json_parse_object((char *)payload, "voltage");
+    char *pressure_sensor = json_parse_object((char *)payload, "pressure");
+    char *vibration_sensor = json_parse_object((char *)payload, "vibration");
 
     if (rotation_sensor == NULL || voltage_sensor == NULL || pressure_sensor == NULL || vibration_sensor == NULL)
     {
-      LOG_ERR("Wrong data received:: rotation_sensor: %s, voltage_sensor: %s, pressure_sensor: %s, vibration_sensor: %s\n", rotation_sensor, voltage_sensor, pressure_sensor, vibration_sensor);
+      LOG_ERR("Null data received: rotation_sensor: %s, voltage_sensor: %s, pressure_sensor: %s, vibration_sensor: %s\n", rotation_sensor, voltage_sensor, pressure_sensor, vibration_sensor);
+      LOG_ERR("%s", (char *)payload);
       break;
     }
-
 
     // Extract the IP addresses from the response
     char *rotation_ip_port = json_parse_string((char *)rotation_sensor, "ip_port");
@@ -238,11 +236,11 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     char *pressure_ip_port = json_parse_string((char *)pressure_sensor, "ip_port");
     char *vibration_ip_port = json_parse_string((char *)vibration_sensor, "ip_port");
 
-
     // if any of the IP addresses is null, return
     if (rotation_ip_port == NULL || voltage_ip_port == NULL || pressure_ip_port == NULL || vibration_ip_port == NULL)
     {
-      LOG_ERR("Wrong data received:: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
+      LOG_ERR("Null data received: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
+      LOG_ERR("%s", (char *)payload);
       break;
     }
 
@@ -252,14 +250,11 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     double new_pressure_status = json_parse_number((char *)pressure_sensor, "status");
     double new_vibration_status = json_parse_number((char *)vibration_sensor, "status");
 
-    
-
     // if the status of the sensors is different from the previous one, update the status
     LOG_INFO("Rotation status: %.2f\n", new_rotation_status);
     LOG_INFO("Voltage status: %.2f\n", new_voltage_status);
     LOG_INFO("Pressure status: %.2f\n", new_pressure_status);
     LOG_INFO("Vibration status: %.2f\n", new_vibration_status);
-
 
     LOG_INFO("Rotation IP: %s\n", rotation_ip_port);
     LOG_INFO("Voltage IP: %s\n", voltage_ip_port);
@@ -278,7 +273,6 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     coap_endpoint_parse(vibration_ip_port, strlen(vibration_ip_port), &vibration_server_ep);
 
     // Observe the resources
-
     if (new_rotation_status != rotation_status)
     {
       rotation_status = new_rotation_status;
@@ -301,14 +295,10 @@ notification_server_callback(coap_observee_t *obs, void *notification,
     }
 
     // If all sensors are active, activate the actuator
-    if (rotation_status == 1 && voltage_status == 1 && pressure_status == 1 && vibration_status == 1)
-    {
+    if (rotation_status && voltage_status && pressure_status && vibration_status)
       status = 1;
-    }
     else
-    {
       status = 0;
-    }
 
     break;
 
@@ -353,7 +343,8 @@ static void client_chunk_handler_registration(coap_message_t *response)
   {
 
     LOG_ERR("Request timed out\n");
-  }else
+  }
+  else
   {
 
     LOG_INFO("Registration successful\n");
@@ -447,7 +438,6 @@ PROCESS_THREAD(alarm_client, ev, data)
         int prediction = model_predict(values, 9);
 
         LOG_INFO("Prediction: %d\n", prediction);
-
       }
       // reset the timer
       etimer_reset(&et);

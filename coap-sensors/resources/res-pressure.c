@@ -30,7 +30,7 @@ static void
 res_event_handler(void)
 {
     current_pressure = generate_gaussian(MEAN, STDDEV);
-    LOG_INFO("Payload to be sent: {\"sensor\":\"pressure\", \"value\":\"%.2f\"}\n", current_pressure);
+    LOG_INFO("Payload to be sent: {\"sensor\":\"pressure\", \"value\":%.2f}\n", current_pressure);
     coap_notify_observers(&res_pressure);
 }
 
