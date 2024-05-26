@@ -92,7 +92,7 @@ PROCESS_THREAD(voltage_server, ev, data)
 	}
 
 
-  LOG_INFO("REGISTRATION SUCCESS\n")
+  LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   
 
@@ -109,7 +109,7 @@ PROCESS_THREAD(voltage_server, ev, data)
 
       if (ev == PROCESS_EVENT_TIMER && data == &e_timer){
         if (status == 1){
-          res_pressure.trigger();
+          res_voltage.trigger();
           LOG_INFO("Voltage event triggered\n");
           etimer_reset(&e_timer);
         }
