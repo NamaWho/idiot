@@ -29,6 +29,11 @@
 #define LOG_LEVEL LOG_LEVEL_APP
 /* ------------------------------- */
 
+#define MAX_REGISTRATION_RETRY 3
+
+
+static int max_registration_retry = MAX_REGISTRATION_RETRY;
+
 
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
@@ -56,7 +61,7 @@ static coap_observee_t *obs_vibration;
 
 /*----------------------------------------------------------------------------*/
 
-// static char *service_url = "/telemetry";
+static copa_observee_t *obs_control;
 
 static bool registered = false;
 
@@ -141,8 +146,82 @@ notification_callback(coap_observee_t *obs, void *notification,
       return;
     }
 
-    // call a function to handle the store the value
+    // call a function to handle the store of the value
     store_value(sensor, value);
+    
+    break;
+
+  case OBSERVE_OK:
+    LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
+    break;
+  case OBSERVE_NOT_SUPPORTED:
+    LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
+    obs = NULL;
+    break;
+  case ERROR_RESPONSE_CODE:
+    LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
+    obs = NULL;
+    break;
+  case NO_REPLY_FROM_SERVER:
+    LOG_INFO("NO_REPLY_FROM_SERVER: "
+             "removing observe registration with token %x%x\n",
+             obs->token[0], obs->token[1]);
+    obs = NULL;
+    break;
+  }
+}
+static void
+notification_server_callback(coap_observee_t *obs, void *notification,
+                      coap_notification_flag_t flag)
+{
+  int len = 0;
+  const uint8_t *payload = NULL;
+
+  LOG_INFO("Notification handler\n");
+  LOG_INFO("Observee URI: %s\n", obs->url);
+
+  if (notification){
+    len = coap_get_payload(notification, &payload);
+  }
+
+  switch(flag) {
+    
+  case NOTIFICATION_OK:
+    LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
+
+    // Extract the IP addresses from the response
+  char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip_port");
+  char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip_port");
+  char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip_port");
+  char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip_port");
+
+  // if any of the IP addresses is null, return
+  if(rotation_ip == NULL || voltage_ip == NULL || pressure_ip == NULL || vibration_ip == NULL){
+    LOG_INFO("Invalid IP addresses\n");
+    return;
+  }
+
+  LOG_INFO("Rotation IP: %s\n", rotation_ip);
+  LOG_INFO("Voltage IP: %s\n", voltage_ip);
+  LOG_INFO("Pressure IP: %s\n", pressure_ip);
+  LOG_INFO("Vibration IP: %s\n", vibration_ip);
+
+  // Parse the extracted IP addresses to coap_endpoint_t structures
+  static coap_endpoint_t rotation_server_ep;
+  static coap_endpoint_t voltage_server_ep;
+  static coap_endpoint_t pressure_server_ep;
+  static coap_endpoint_t vibration_server_ep;
+
+  coap_endpoint_parse(rotation_ip, strlen(rotation_ip), &rotation_server_ep);
+  coap_endpoint_parse(voltage_ip, strlen(voltage_ip), &voltage_server_ep);
+  coap_endpoint_parse(pressure_ip, strlen(pressure_ip), &pressure_server_ep);
+  coap_endpoint_parse(vibration_ip, strlen(vibration_ip), &vibration_server_ep);
+
+  // Observe the resources
+  toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
+  toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
+  toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
+  toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
     
     break;
 
@@ -185,64 +264,45 @@ toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_u
   }
 }
 
+void
+toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
+{
+  if (obs)
+  {
+    LOG_INFO("Stopping observation\n");
+    coap_obs_remove_observee(obs);
+    obs = NULL;
+  }
+  else
+  {
+    LOG_INFO("Starting observation at %s\n", res_uri);
+    obs = coap_obs_request_registration(server_ep, res_uri, notification_server_callback, NULL);
+  }
+}
+
 void client_chunk_handler_registration(coap_message_t *response)
 {
-  const uint8_t *chunk;
+  cif(response == NULL) {
 
-  if (response == NULL)
-  {
-    LOG_INFO("Timeout expired\n");
-    return;
-  }
- 
-  int len = coap_get_payload(response, &chunk);
+		LOG_ERR("Request timed out\n");
 
-  // if chunck length is not > 0, the response is empty
-  if(len <= 0){
-    LOG_INFO("Empty response\n");
-    return;
-  }
+	}else if(response->code != 65){
 
-  LOG_INFO("|%.*s \n", len, (char *)chunk);
- 
+		LOG_ERR("Error: %d\n",response->code);
 
-  // If the registration is successful, extract the IP addresses
+	}else{
 
-  // Extract the IP addresses from the response
-  char *rotation_ip = json_parse_string((char *)chunk, "rotation_ip_port");
-  char *voltage_ip = json_parse_string((char *)chunk, "voltage_ip_port");
-  char *pressure_ip = json_parse_string((char *)chunk, "pressure_ip_port");
-  char *vibration_ip = json_parse_string((char *)chunk, "vibration_ip_port");
+		LOG_INFO("Registration successful\n");
+		max_registration_retry = 0;		// if = 0 --> registration ok!
 
-  // if any of the IP addresses is null, return
-  if(rotation_ip == NULL || voltage_ip == NULL || pressure_ip == NULL || vibration_ip == NULL){
-    LOG_INFO("Invalid IP addresses\n");
-    return;
-  }
-
-  LOG_INFO("Rotation IP: %s\n", rotation_ip);
-  LOG_INFO("Voltage IP: %s\n", voltage_ip);
-  LOG_INFO("Pressure IP: %s\n", pressure_ip);
-  LOG_INFO("Vibration IP: %s\n", vibration_ip);
-
-  registered = true;
-
-  // Parse the extracted IP addresses to coap_endpoint_t structures
-  static coap_endpoint_t rotation_server_ep;
-  static coap_endpoint_t voltage_server_ep;
-  static coap_endpoint_t pressure_server_ep;
-  static coap_endpoint_t vibration_server_ep;
-
-  coap_endpoint_parse(rotation_ip, strlen(rotation_ip), &rotation_server_ep);
-  coap_endpoint_parse(voltage_ip, strlen(voltage_ip), &voltage_server_ep);
-  coap_endpoint_parse(pressure_ip, strlen(pressure_ip), &pressure_server_ep);
-  coap_endpoint_parse(vibration_ip, strlen(vibration_ip), &vibration_server_ep);
-
-  // Observe the resources
-  toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
-  toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
-  toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
-  toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
+		return;
+	}
+	
+	// If I'm at this point, there was some problem in the registration phasse, so we decide to try again until max_registration_retry != 0
+	max_registration_retry--;
+	if(max_registration_retry==0)
+		max_registration_retry=-1;
+  
 }
 
 PROCESS_THREAD(alarm_client, ev, data)
@@ -253,18 +313,37 @@ PROCESS_THREAD(alarm_client, ev, data)
 
     PROCESS_BEGIN();
 
-  coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
+    while(max_registration_retry!=0){
+		/* -------------- REGISTRATION --------------*/
+		// Populate the coap_endpoint_t data structure
+		coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &main_server_ep);
+		// Prepare the message
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, "register/");
+		const char msg[] = "alarm";
+		//Set payload
+		coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
 
-  coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
-  coap_set_header_uri_path(request, "register/");
-  const char msg[] = "alarm";
-  coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
-  leds_single_on(LEDS_YELLOW);
-  COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler_registration);
-  
-  LOG_INFO("--Registered--\n");
+    leds_single_on(LEDS_YELLOW);
+	
+		 COAP_BLOCKING_REQUEST(&main_server_ep, request, client_chunk_handler);
+    
+		/* -------------- END REGISTRATION --------------*/
+		if(max_registration_retry == -1){		// something goes wrong more MAX_REGISTRATION_RETRY times, node goes to sleep then try again
+			etimer_set(&sleep_timer, 30*CLOCK_SECOND);
+			PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+			max_registration_retry = MAX_REGISTRATION_RETRY;
+		}
+	}
+
+  LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);
+
+  // toggle observation to the server
+  toggle_server_observation(obs_control, &main_server_ep, "/control");
+
+
 
   // set the timer
   etimer_set(&et, 5 * CLOCK_SECOND);
@@ -316,3 +395,7 @@ PROCESS_THREAD(alarm_client, ev, data)
 
     PROCESS_END();
 }
+
+
+
+

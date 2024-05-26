@@ -57,6 +57,8 @@ static struct etimer e_timer, sleep_timer;
 PROCESS(voltage_server, "Voltage Sensor CoAP Server");
 AUTOSTART_PROCESSES(&voltage_server);
 
+int status = 1;
+
 PROCESS_THREAD(voltage_server, ev, data)
 {
   static coap_endpoint_t main_server_ep;

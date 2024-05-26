@@ -57,6 +57,8 @@ static struct etimer e_timer, sleep_timer;
 PROCESS(vibration_server, "Vibration Sensor CoAP Server");
 AUTOSTART_PROCESSES(&vibration_server);
 
+int status = 1;
+
 PROCESS_THREAD(vibration_server, ev, data)
 {
   static coap_endpoint_t main_server_ep;

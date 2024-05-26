@@ -57,6 +57,8 @@ static struct etimer e_timer, sleep_timer;
 PROCESS(rotation_server, "Rotation Sensor CoAP Server");
 AUTOSTART_PROCESSES(&rotation_server);
 
+int status = 1;
+
 PROCESS_THREAD(rotation_server, ev, data)
 {
   static coap_endpoint_t main_server_ep;
