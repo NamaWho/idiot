@@ -22,10 +22,29 @@ class CoAPServer(CoAP):
         print(host, port)
         self.db = Database()
         self.connection = self.db.connect_db()
+        self.flush_sensor_table()
         self.add_resource("register/", Registration("Registration", database=self.db))
         # self.add_resource("telemetry/", Telemetry(self.db))
         self.add_resource("control/", Control(coap_server=self))
 
+    def flush_sensor_table(self):
+        """
+        Flush the sensor table
+
+        :return: None
+        """
+        if not self.connection.is_connected():
+            print("Database connection lost")
+            return
+
+        try:
+            cursor = self.connection.cursor()
+            truncate_sensor_table_query = "TRUNCATE TABLE sensor"
+            cursor.execute(truncate_sensor_table_query)
+            self.connection.commit()
+            cursor.close()
+        except Error as e:
+            print(f"Error truncating sensor table: {e}")
 
     def close(self):
         if self.connection is not None and self.connection.is_connected():
