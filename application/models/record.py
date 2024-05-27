@@ -11,6 +11,18 @@ class Record:
     rotation = 0
     pressure = 0
     voltage = 0
+    db = None
+
+    @classmethod
+    def set_db(cls, db: Any):
+        """
+        Set the database connection
+
+        :param db: The database connection
+
+        :return: None
+        """
+        cls.db = db
 
     @classmethod
     def set_vibration(cls, value):
@@ -76,7 +88,8 @@ class Record:
 
         :return: None
         """
-        db = Database()
+        if Record.db is not None:
+            db = Database()
         connection = db.connect_db()
 
         try:

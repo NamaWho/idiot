@@ -19,11 +19,13 @@ class Registration(Resource):
         "alarm": {"status": 0, "address": "", "port": 0}
     }
 
-   
-    def __init__(self, name="Registration"):
+    def __init__(self, name="Registration", database=None):
         super(Registration, self).__init__(name)
         self.payload = "Registration Resource"
-        self.database = Database()
+        if not database:
+            self.database = Database()
+        else:
+            self.database = database
         self.connection = self.database.connect_db()
     
     def render_GET(self, request):
@@ -53,7 +55,7 @@ class Registration(Resource):
         self.sensors[type]["status"] = 1
         self.sensors[type]["address"] = ip_port[0]
         self.sensors[type]["port"] = ip_port[1]
-        ObserveSensor(ip_port, type)
+        ObserveSensor(ip_port, type, self.database)
         #ObserveSensorStaus(ip_port, type+"/status")
 
         print(f"Registered {type} sensor at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])

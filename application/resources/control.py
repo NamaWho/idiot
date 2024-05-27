@@ -20,7 +20,10 @@ class Control(Resource):
     def __init__(self, name="Control", coap_server=None):
         super(Control, self).__init__(name, coap_server, visible=True, observable=True, allow_children=False)
         self.payload = "Control Resource"
-        self.database = Database()
+        if coap_server is not None:
+            self.database = coap_server.db
+        else:
+            self.database = Database()
         self.connection = self.database.connect_db()
         self.period = 30       
         self.update()

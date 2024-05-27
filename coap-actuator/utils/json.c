@@ -102,12 +102,18 @@ char* json_parse_object(const char* json, const char* key) {
         return NULL;
     }
     key_start += strlen(key) + 2;
-    const char* value_end = strchr(key_start, '}');
-    if (value_end == NULL) {
-        return NULL;
+    const char* value_end = key_start;
+    int brace_count = 1;
+    while (brace_count > 0) {
+        if (*value_end == '{') {
+            brace_count++;
+        } else if (*value_end == '}') {
+            brace_count--;
+        }
+        value_end++;
     }
 
-    size_t value_length = value_end - key_start + 1;
+    size_t value_length = value_end - key_start;
     char* value = (char*)malloc(value_length + 1);
     if (value == NULL) {
         return NULL;

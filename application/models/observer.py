@@ -11,9 +11,11 @@ import re
 
 class ObserveSensor:
 
-    def __init__(self,source_address, resource):
+    def __init__(self,source_address, resource, database=None):
         self.address = source_address
         self.resource = resource
+        self.database = database
+        Record.set_db(self.database)
         self.start_observing()
        
     def start_observing(self):
@@ -55,11 +57,14 @@ class ObserveSensor:
 
 class ObserveSensorStaus:
 
-    def __init__(self,source_address, resource):
+    def __init__(self,source_address, resource, database=None):
         self.address = source_address
         self.resource = resource
         self.start_observing()
-        self.database = Database()
+        if not database:
+            self.database = Database()
+        else:
+            self.database = database
         
     def start_observing(self):
         self.client = HelperClient(self.address)
@@ -75,7 +80,7 @@ class ObserveSensorStaus:
             if self.resource == "vibration":
                 print("\n📳📳📳📳 VIBRATION SENSOR STATUS CHANGED 📳📳📳📳\n")
                 
-                change_status(self.resource, self.address, data["status"])
+                self.change_status(self.resource, self.address, data["status"], self.database)
 
 
                 print("Vibration sensor status updated")
@@ -84,33 +89,29 @@ class ObserveSensorStaus:
             elif self.resource == "rotation":
                 print("\n🔄🔄🔄🔄 ROTATION SENSOR STATUS CHANGED 🔄🔄🔄🔄\n")
                 
-                change_status(self.resource, self.address, data["status"])
+                self.change_status(self.resource, self.address, data["status"], self.database)
 
                 print("Rotation sensor status updated")
             
             elif self.resource == "pressure":
                 print("\n🔘🔘🔘🔘 ROTATION SENSOR STATUS CHANGED 🔘🔘🔘🔘\n")
                 
-                change_status(self.resource, self.address, data["status"])
+                self.change_status(self.resource, self.address, data["status"], self.database)
 
                 print("Pressure sensor status updated")
             
             elif self.resource == "voltage":
                 print("\n🔋🔋🔋🔋 ROTATION SENSOR STATUS CHANGED 🔋🔋🔋🔋\n")
                 
-
-                change_status(self.resource, self.address, data["status"])
-
+                self.change_status(self.resource, self.address, data["status"], self.database)
                 print("Voltage sensor status updated")
-            
             
             else:
                 print("Unknown resource:", self.resource)
         except KeyError as e:
             print("KeyError:", e)
 
-
-    def change_status(sensor_type, ip_address, status):
+    def change_status(self, sensor_type, ip_address, status):
         
         connection = self.database.connect_db()
 
