@@ -9,14 +9,15 @@ from models.database import Database
 
 class Registration(Resource):
 
+    COAP_PORT = 5683
     sensors = {
-        "pressure": {"status": 0, "address": "", "port": 0},
-        "vibration": {"status": 0, "address": "", "port": 0},
-        "voltage": {"status": 0, "address": "", "port": 0},
-        "rotation": {"status": 0, "address": "", "port": 0}
+        "pressure": {"status": 0, "address": ""},
+        "vibration": {"status": 0, "address": ""},
+        "voltage": {"status": 0, "address": ""},
+        "rotation": {"status": 0, "address": ""}
     }
     actuators = {
-        "alarm": {"status": 0, "address": "", "port": 0}
+        "alarm": {"status": 0, "address": ""}
     }
 
     def __init__(self, name="Registration", database=None):
@@ -54,13 +55,10 @@ class Registration(Resource):
 
         self.sensors[type]["status"] = 1
         self.sensors[type]["address"] = ip_port[0]
-        self.sensors[type]["port"] = ip_port[1]
         ObserveSensor(ip_port, type, self.database)
         #ObserveSensorStaus(ip_port, type+"/status")
 
-        print(f"Registered {type} sensor at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
-
-    
+        print(f"Registered {type} sensor at {ip_port}")
     
     def register_actuator(self, type, ip_port):
         
@@ -68,11 +66,8 @@ class Registration(Resource):
 
         self.actuators[type]["status"] = 1
         self.actuators[type]["address"] = ip_port[0]
-        self.actuators[type]["port"] = ip_port[1]
 
-        print(f"Registered {type} actuator at {ip_port}", "ip:", ip_port[0], "port:", ip_port[1])
-
-
+        print(f"Registered {type} actuator at {ip_port}")
 
     def insert_device(self, type, ip_port):
         try:
@@ -80,14 +75,13 @@ class Registration(Resource):
             if self.connection and self.connection.is_connected():
                 cursor = self.connection.cursor()
                 insert_node_query = """
-                INSERT INTO sensor (ip_address, port, type, status) 
-                VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE  ip_address = %s, port = %s, type = %s, status = %s
+                INSERT INTO sensor (ip_address, type, status) 
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE  ip_address = %s, type = %s, status = %s
                 """
-                cursor.execute(insert_node_query, (ip_port[0], ip_port[1], type, 1, ip_port[0], ip_port[1], type, 1))
+                cursor.execute(insert_node_query, (ip_port[0], type, 1, ip_port[0], type, 1))
                 self.connection.commit()
                 cursor.close()
-            
         except Error as e:
             print(f"Error registering sensor: {e}")
 

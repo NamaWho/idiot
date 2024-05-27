@@ -27,26 +27,20 @@ class ObserveSensor:
         if response.payload is None:
             return
 
-        print("Observer response:", response.payload)
-
-        fix_format = re.sub(r'(\d+),(\d+)', r'\1.\2', response.payload)
-
-        print("Fixed format:", fix_format)
-
-        data = json.loads(fix_format)
+        data = json.loads(response.payload)
         
         try:
             if self.resource == "vibration":
-                print("\n📳📳📳📳 VIBRATION TELEMETRY 📳📳📳📳\n")
+                print("\n📳📳📳📳 VIBRATION TELEMETRY 📳📳📳📳 : " + str(data["value"]))
                 Record.set_vibration(data["value"])
             elif self.resource == "rotation":
-                print("\n🔄🔄🔄🔄 ROTATION TELEMETRY 🔄🔄🔄🔄\n")
+                print("\n🔄🔄🔄🔄 ROTATION TELEMETRY 🔄🔄🔄🔄 : " + str(data["value"]))
                 Record.set_rotation(data["value"])
             elif self.resource == "pressure":
-                print("\n🔘🔘🔘🔘 PRESSURE TELEMETRY 🔘🔘🔘🔘\n")
+                print("\n🔘🔘🔘🔘 PRESSURE TELEMETRY 🔘🔘🔘🔘 : " + str(data["value"]))
                 Record.set_pressure(data["value"])
             elif self.resource == "voltage":
-                print("\n🔋🔋🔋🔋 VOLTAGE TELEMETRY 🔋🔋🔋🔋\n")
+                print("\n🔋🔋🔋🔋 VOLTAGE TELEMETRY 🔋🔋🔋🔋 : " + str(data["value"]))
                 Record.set_voltage(data["value"])
             else:
                 print("Unknown resource:", self.resource)
@@ -55,74 +49,74 @@ class ObserveSensor:
 
 
 
-class ObserveSensorStaus:
+# class ObserveSensorStaus:
 
-    def __init__(self,source_address, resource, database=None):
-        self.address = source_address
-        self.resource = resource
-        self.start_observing()
-        if not database:
-            self.database = Database()
-        else:
-            self.database = database
+#     def __init__(self,source_address, resource, database=None):
+#         self.address = source_address
+#         self.resource = resource
+#         self.start_observing()
+#         if not database:
+#             self.database = Database()
+#         else:
+#             self.database = database
         
-    def start_observing(self):
-        self.client = HelperClient(self.address)
-        self.client.observe(self.resource, self.observer)
+#     def start_observing(self):
+#         self.client = HelperClient(self.address)
+#         self.client.observe(self.resource, self.observer)
     
-    def observer(self, response):
+#     def observer(self, response):
 
-        print("Observer response:", response.payload)
+#         print("Observer response:", response.payload)
 
-        data = json.loads(fix_format)
+#         data = json.loads(fix_format)
         
-        try:
-            if self.resource == "vibration":
-                print("\n📳📳📳📳 VIBRATION SENSOR STATUS CHANGED 📳📳📳📳\n")
+#         try:
+#             if self.resource == "vibration":
+#                 print("\n📳📳📳📳 VIBRATION SENSOR STATUS CHANGED 📳📳📳📳\n")
                 
-                self.change_status(self.resource, self.address, data["status"], self.database)
+#                 self.change_status(self.resource, self.address, data["status"], self.database)
 
 
-                print("Vibration sensor status updated")
+#                 print("Vibration sensor status updated")
 
             
-            elif self.resource == "rotation":
-                print("\n🔄🔄🔄🔄 ROTATION SENSOR STATUS CHANGED 🔄🔄🔄🔄\n")
+#             elif self.resource == "rotation":
+#                 print("\n🔄🔄🔄🔄 ROTATION SENSOR STATUS CHANGED 🔄🔄🔄🔄\n")
                 
-                self.change_status(self.resource, self.address, data["status"], self.database)
+#                 self.change_status(self.resource, self.address, data["status"], self.database)
 
-                print("Rotation sensor status updated")
+#                 print("Rotation sensor status updated")
             
-            elif self.resource == "pressure":
-                print("\n🔘🔘🔘🔘 ROTATION SENSOR STATUS CHANGED 🔘🔘🔘🔘\n")
+#             elif self.resource == "pressure":
+#                 print("\n🔘🔘🔘🔘 ROTATION SENSOR STATUS CHANGED 🔘🔘🔘🔘\n")
                 
-                self.change_status(self.resource, self.address, data["status"], self.database)
+#                 self.change_status(self.resource, self.address, data["status"], self.database)
 
-                print("Pressure sensor status updated")
+#                 print("Pressure sensor status updated")
             
-            elif self.resource == "voltage":
-                print("\n🔋🔋🔋🔋 ROTATION SENSOR STATUS CHANGED 🔋🔋🔋🔋\n")
+#             elif self.resource == "voltage":
+#                 print("\n🔋🔋🔋🔋 ROTATION SENSOR STATUS CHANGED 🔋🔋🔋🔋\n")
                 
-                self.change_status(self.resource, self.address, data["status"], self.database)
-                print("Voltage sensor status updated")
+#                 self.change_status(self.resource, self.address, data["status"], self.database)
+#                 print("Voltage sensor status updated")
             
-            else:
-                print("Unknown resource:", self.resource)
-        except KeyError as e:
-            print("KeyError:", e)
+#             else:
+#                 print("Unknown resource:", self.resource)
+#         except KeyError as e:
+#             print("KeyError:", e)
 
-    def change_status(self, sensor_type, ip_address, status):
+#     def change_status(self, sensor_type, ip_address, status):
         
-        connection = self.database.connect_db()
+#         connection = self.database.connect_db()
 
-        try:
-            with connection.cursor() as cursor:
-                cursor = connection.cursor()
-                sql = "UPDATE sensor SET status = %s WHERE ip_address = %s AND type = %s"
-                cursor.execute(sql, (status, ip_address, sensor_type))
-                connection.commit()
-                connection.close()
+#         try:
+#             with connection.cursor() as cursor:
+#                 cursor = connection.cursor()
+#                 sql = "UPDATE sensor SET status = %s WHERE ip_address = %s AND type = %s"
+#                 cursor.execute(sql, (status, ip_address, sensor_type))
+#                 connection.commit()
+#                 connection.close()
                 
-        except Exception as e:
-            print(f"Error inserting record: {e}")
-            connection.close()
+#         except Exception as e:
+#             print(f"Error inserting record: {e}")
+#             connection.close()
