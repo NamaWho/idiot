@@ -19,12 +19,19 @@ class ObserveSensor:
         self.start_observing()
        
     def start_observing(self):
-        self.client = HelperClient(self.address)
+        print(f"Starting observation at {self.address[0]} and port {self.address[1]}")
+        self.client = HelperClient(server=(self.address[0], self.address[1]))
         self.client.observe(self.resource, self.observer)
     
     def observer(self, response):
 
-        if response.payload is None:
+        if not response:
+            fix_format = re.sub(r"b'", "", str(response.payload))
+            fix_format = re.sub(r"'", "", fix_format)
+            data = json.loads(fix_format)
+            print(f"Observer response: {data}")
+        else:
+            print(f"Observer response: {response}")
             return
 
         data = json.loads(response.payload)

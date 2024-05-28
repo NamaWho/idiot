@@ -23,9 +23,9 @@ class CoAPServer(CoAP):
         self.db = Database()
         self.connection = self.db.connect_db()
         self.flush_sensor_table()
-        self.add_resource("register/", Registration("Registration", database=self.db))
+        self.add_resource("register/", Registration("Registration"))
         # self.add_resource("telemetry/", Telemetry(self.db))
-        self.add_resource("control/", Control(coap_server=self))
+        self.add_resource("control/", Control("Control"))
 
     def flush_sensor_table(self):
         """
@@ -47,7 +47,7 @@ class CoAPServer(CoAP):
             print(f"Error truncating sensor table: {e}")
 
     def close(self):
-        if self.connection is not None and self.connection.is_connected():
-            self.connection.close()
-            print("MySQL connection closed")
+        # if self.connection is not None and self.connection.is_connected():
+        #     self.connection.close()
+        #     print("MySQL connection closed")
         super(CoAPServer, self).close()

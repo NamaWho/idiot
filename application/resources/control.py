@@ -11,36 +11,31 @@ from coapthon import defines
 
 class Control(Resource):
 
-    sensors = {
-        "pressure": {"status": 0, "ip_address": ""},
-        "vibration": {"status": 0, "ip_address": ""},
-        "voltage": {"status": 0, "ip_address": ""},
-        "rotation": {"status": 0, "ip_address": ""}
-    }  
 
-    def __init__(self, name="Control", coap_server=None, resource_key=None, subresources_keys=None):
-        super(Control, self).__init__(name, coap_server, visible=True, observable=True, allow_children=False)
+    def __init__(self, name="Control"):
+        super(Control, self).__init__(name)
         self.payload = "Control Resource"
-        self.resource_key = resource_key
-        self.subresources_keys = subresources_keys
-        self.content_type = "text/plain"
-        self.database = coap_server.db if coap_server else Database()
+        self.database = Database()
         self.connection = self.database.connect_db()
-        self.period = 30       
-        self.update(True)
+
 
     def render_GET(self, request):
         print(f"RENDER GET")
         self.fetch_sensors_from_db()
-        self.update_sensors_status()
-        print(f"Payload sent back: {self.payload}")
         return self
     
     def fetch_sensors_from_db(self):
         if not self.connection.is_connected():
-            print("Database connection lost")
             self.payload = None
+            print("Database connection lost, Payload: None")
             return self
+
+        sensors = {
+            "pressure": {"status": 0, "ip_address": ""},
+            "vibration": {"status": 0, "ip_address": ""},
+            "voltage": {"status": 0, "ip_address": ""},
+            "rotation": {"status": 0, "ip_address": ""}
+        }  
         
         try:
             cursor = self.connection.cursor()
@@ -55,87 +50,31 @@ class Control(Resource):
 
             for row in sensor_data:
                 ip_address, type, status = row
-                self.sensors[type]["status"] = int(status)
-                self.sensors[type]["ip_address"] = ip_address
+                sensors[type]["status"] = int(status)
+                sensors[type]["ip_address"] = ip_address
+
+            # if all sesnors are registered and status is 1, then send the payload
+            if all([values["ip_address"] != "" and values["status"] == 1 for values in sensors.values()]):
+                json_payload = {
+                    "pressure": sensors["pressure"]["ip_address"],
+                    "vibration": sensors["vibration"]["ip_address"],
+                    "voltage": sensors["voltage"]["ip_address"],
+                    "rotation": sensors["rotation"]["ip_address"]
+                }
+                self.payload = json.dumps(json_payload)
+                print(f"Payload: {self.payload}")
+
+            else:
+                self.payload = None
+                print(f"Not all sensors are registered, Payload: {self.payload}")
+                
         
         except Error as e:
-            print(f"Error retrieving sensor data: {e}")
             self.payload = None
-
-    def update_sensors_status(self):
-        try:
-            for key, values in self.sensors.items():
-                if values["ip_address"] == "":
-                    print(f"{key} sensor not registered")
-                    continue
-                
-                self.retrieve_and_update_sensor_status(key, int(values["status"]))
+            print(f"Error retrieving sensor data: {e}, Payload: {self.payload}")
         
-        except Error as e:
-            print(f"Error retrieving sensor status: {e}")
-            self.payload = None
+        
 
-        ip_status = [f"{values['ip_address'].replace('fd00::', '')}-{values['status']}" for values in self.sensors.values()]
-        self.payload = ";".join(ip_status)
 
-    def retrieve_and_update_sensor_status(self, sensor_type, status=0):
-        MAX_RETRIES = 3
-        TIMEOUT = 2
-        COAP_PORT = 5683
 
-        for attempt in range(MAX_RETRIES):
-            try:
-                client = HelperClient(server=(self.sensors[sensor_type]["ip_address"], COAP_PORT))
-                path = sensor_type + "/status"
-                response = client.get(path, timeout=TIMEOUT).payload
-
-                # If the sensor is not reachable, set the status to 0
-                if not response:
-                    print(f"{sensor_type} sensor not reachable")
-                    sensor_status = 0
-                else:
-                    sensor_data = json.loads(response)
-                    sensor_status = sensor_data.get("status", 0)
-
-                client.stop()
-
-                if status != sensor_status:
-                    self.update_sensor_in_db(sensor_type, sensor_status)
-                    self.sensors[sensor_type]["status"] = sensor_status
-                
-                break
-            except Exception as e:
-                if attempt < MAX_RETRIES - 1:
-                    print(f"Error retrieving {sensor_type} sensor status: {e}. Retrying...")
-                    time.sleep(2)
-                else:
-                    print(f"Error retrieving {sensor_type} sensor status: {e}")
-                    raise e
-                
-    def update_sensor_in_db(self, sensor_type, sensor_status):
-        if self.connection and self.connection.is_connected():
-            try:
-                cursor = self.connection.cursor()
-                update_sensor_query = f"""
-                UPDATE sensor
-                SET status = {sensor_status}
-                WHERE ip_address = %s AND type = %s
-                """
-                cursor.execute(update_sensor_query, (self.sensors[sensor_type]["ip_address"], sensor_type))
-                self.connection.commit()
-                cursor.close()
-            except Error as e:
-                print(f"Error updating {sensor_type} sensor status: {e}")
-
-    def update(self, first=False):
-        print("Updating sensor status from UPDATE method")
-
-        if not self._coap_server.stopped.isSet():
-            timer = threading.Timer(self.period, self.update)
-            timer.daemon = True
-            timer.start()
-
-            if not first and self._coap_server is not None:
-                self._coap_server.notify(self)
-                self.observe_count += 1
 

@@ -32,13 +32,14 @@
 #define MAX_REGISTRATION_RETRY 3
 
 static int max_registration_retry = MAX_REGISTRATION_RETRY;
+static int max_retry = 3;
 
-static int status = 0;
+/*static int status = 0;
 
 static double rotation_status = 0.0;
 static double voltage_status = 0.0;
 static double pressure_status = 0.0;
-static double vibration_status = 0.0;
+static double vibration_status = 0.0;*/
 
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
@@ -48,11 +49,11 @@ static double vibration_status = 0.0;
 /*----------------------------------------------------------------------------*/
 
 static coap_endpoint_t main_server_ep;
-static coap_observee_t *obs_rotation;
+/*static coap_observee_t *obs_rotation;
 static coap_observee_t *obs_voltage;
 static coap_observee_t *obs_pressure;
 static coap_observee_t *obs_vibration;
-static coap_observee_t *obs_control;
+static coap_observee_t *obs_control;*/
 
 /*----------------------------------------------------------------------------*/
 
@@ -68,17 +69,18 @@ static DynamicQueue vibration_queue;
 
 /* ----------------------- SIGNATURES ----------------------- */
 static void client_chunk_handler_registration(coap_message_t *response);
-static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
-static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
-static void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
-static void notification_server_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
-static int store_value(char *sensor, double value);
+//static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
+//static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
+//sstatic void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
+//static void notification_server_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
+static void actuator_chunk_handler(coap_message_t *response);
+//static int store_value(char *sensor, double value);
 /*----------------------------------------------------------------*/
 
 /*
  * Handle the value received from the sensor
  */
-static int store_value(char *sensor, double value)
+/*static int store_value(char *sensor, double value)
 {
   if (strcmp(sensor, "rotation") == 0)
   {
@@ -111,12 +113,12 @@ static int store_value(char *sensor, double value)
   }
 
   return 0;
-}
+}*/
 
 /*
  * Handle the response to the observe request and the following notifications
  */
-static void
+/*static void
 notification_callback(coap_observee_t *obs, void *notification,
                       coap_notification_flag_t flag)
 {
@@ -172,12 +174,12 @@ notification_callback(coap_observee_t *obs, void *notification,
     obs = NULL;
     break;
   }
-}
+}*/
 
 /*
  * Toggle the observation of the remote resource
  */
-static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
+/*static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
 {
   if (obs)
   {
@@ -190,9 +192,9 @@ static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep,
     LOG_INFO("Starting observation at %s\n", res_uri);
     obs = coap_obs_request_registration(server_ep, res_uri, notification_callback, NULL);
   }
-}
+}*/
 
-void notification_server_callback(coap_observee_t *obs, void *notification,
+/*void notification_server_callback(coap_observee_t *obs, void *notification,
                                   coap_notification_flag_t flag)
 {
   int len = 0;
@@ -365,7 +367,7 @@ static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *ser
     LOG_INFO("Starting observation at %s\n", res_uri);
     obs = coap_obs_request_registration(server_ep, res_uri, notification_server_callback, NULL);
   }
-}
+}*/
 
 static void client_chunk_handler_registration(coap_message_t *response)
 {
@@ -389,10 +391,41 @@ static void client_chunk_handler_registration(coap_message_t *response)
     max_registration_retry = -1;
 }
 
+static void actuator_chunk_handler(coap_message_t *response)
+{
+  if (response == NULL)
+  {
+
+    LOG_ERR("Request timed out\n");
+  }
+  else
+  {
+    const uint8_t *payload = NULL;
+
+    int len = coap_get_payload(response, &payload);
+
+    if(len > 0){
+      
+        LOG_INFO("Received response: %s\n", (char *)payload);
+        max_retry = 0; // if = 0 --> data received!
+        return;
+    }
+    else{
+        LOG_INFO("Empty payload\n");
+    }
+  }
+
+  // If I'm at this point, there was some problem in the registration phasse, so we decide to try again until max_registration_retry != 0
+  max_retry--;
+  if (max_retry == 0)
+    max_retry = -1;
+}
+
 PROCESS_THREAD(alarm_client, ev, data)
 {
   static struct etimer et, sleep_timer;
   static coap_message_t request[1];
+
 
   PROCESS_BEGIN();
 
@@ -426,7 +459,34 @@ PROCESS_THREAD(alarm_client, ev, data)
   leds_single_on(LEDS_GREEN);
 
   // toggle observation to the server
-  toggle_server_observation(obs_control, &main_server_ep, "/control");
+  //toggle_server_observation(obs_control, &main_server_ep, "/control");
+
+  // retrieve the IPs of the sensors
+
+  while (max_retry != 0)
+  {
+    /* -------------- GETTING IPs OF SENSORS --------------*/
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, "control/");
+    const char msg[] = "alarm";
+    // Set payload
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+    leds_single_on(LEDS_YELLOW);
+
+    COAP_BLOCKING_REQUEST(&main_server_ep, request, actuator_chunk_handler);
+
+    /* -------------- END --------------*/
+    if (max_retry == -1)
+    { 
+      etimer_set(&sleep_timer, 30 * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+      max_retry = 3;
+    }
+  }
+
+  LOG_INFO("IPs RETRIEVED\n");
+
 
   // set the timer
   etimer_set(&et, 60 * CLOCK_SECOND);
@@ -440,7 +500,7 @@ PROCESS_THREAD(alarm_client, ev, data)
 
       // if all the queues have 24 elements, make a prediction
 
-      if (rotation_queue.size == 24 && voltage_queue.size == 24 && pressure_queue.size == 24 && vibration_queue.size == 24 && status == 1)
+      if (rotation_queue.size == 24 && voltage_queue.size == 24 && pressure_queue.size == 24 && vibration_queue.size == 24)
       {
 
         // prepare vector of float values: calculate the mean of the values in the queue

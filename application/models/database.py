@@ -5,6 +5,11 @@ import json
 class Database:
     connection = None
 
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Database, cls).__new__(cls)
+        return cls.instance
+
     def __init__(self):
        return
     
