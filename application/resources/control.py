@@ -14,22 +14,9 @@ class Control(Resource):
 
     def __init__(self, name="Control"):
         super(Control, self).__init__(name)
-    sensors = {
-        "pressure": {"status": 0, "ip_address": ""},
-        "vibration": {"status": 0, "ip_address": ""},
-        "voltage": {"status": 0, "ip_address": ""},
-        "rotation": {"status": 0, "ip_address": ""}
-    }  
-
-    def __init__(self, name="Control", coap_server=None):
-        super(Control, self).__init__(name, coap_server, visible=True, observable=True, allow_children=False)
         self.payload = "Control Resource"
         self.database = Database()
-        self.database = coap_server.db if coap_server else Database()
         self.connection = self.database.connect_db()
-
-        self.period = 10       
-        self.update(True)
 
     def render_GET(self, request):
         print(f"RENDER GET")
