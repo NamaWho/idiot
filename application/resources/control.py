@@ -7,6 +7,7 @@ import json
 import time
 import threading
 import re
+from coapthon import defines
 
 class Control(Resource):
 
@@ -17,18 +18,22 @@ class Control(Resource):
         "rotation": {"status": 0, "ip_address": ""}
     }  
 
-    def __init__(self, name="Control", coap_server=None):
+    def __init__(self, name="Control", coap_server=None, resource_key=None, subresources_keys=None):
         super(Control, self).__init__(name, coap_server, visible=True, observable=True, allow_children=False)
         self.payload = "Control Resource"
+        self.resource_key = resource_key
+        self.subresources_keys = subresources_keys
+        self.content_type = "text/plain"
         self.database = coap_server.db if coap_server else Database()
         self.connection = self.database.connect_db()
         self.period = 30       
-        self.update()
+        self.update(True)
 
     def render_GET(self, request):
-        print(f"Checking sensor status")
+        print(f"RENDER GET")
         self.fetch_sensors_from_db()
         self.update_sensors_status()
+        print(f"Payload sent back: {self.payload}")
         return self
     
     def fetch_sensors_from_db(self):
@@ -70,19 +75,8 @@ class Control(Resource):
             print(f"Error retrieving sensor status: {e}")
             self.payload = None
 
-        # sensor_data = {
-        #     sensor: {
-        #         "ip_address": f"{values['ip_address']}",
-        #         "status": f"{values['status']}"
-        #     } for sensor, values in self.sensors.items()
-        # }
-
-        # ip_status = [f"{sensor['ip_address'].replace('fd00::', '')}-{sensor['status']}" for sensor in self.sensors.values()]
-        # self.payload = json.dumps(ip_status)
-        # print(f"IP and status: {self.payload}")
         ip_status = [f"{values['ip_address'].replace('fd00::', '')}-{values['status']}" for values in self.sensors.values()]
         self.payload = ";".join(ip_status)
-        print(f"IP and status: {self.payload}")
 
     def retrieve_and_update_sensor_status(self, sensor_type, status=0):
         MAX_RETRIES = 3
@@ -105,11 +99,9 @@ class Control(Resource):
 
                 client.stop()
 
-                print(f"status: {status} of type {type(status)}, sensor_status: {sensor_status} of type {type(sensor_status)}")
                 if status != sensor_status:
                     self.update_sensor_in_db(sensor_type, sensor_status)
                     self.sensors[sensor_type]["status"] = sensor_status
-                    print(f"Updated {sensor_type} sensor status to {sensor_status}")
                 
                 break
             except Exception as e:
@@ -135,18 +127,15 @@ class Control(Resource):
             except Error as e:
                 print(f"Error updating {sensor_type} sensor status: {e}")
 
+    def update(self, first=False):
+        print("Updating sensor status from UPDATE method")
 
-    def update(self):
-        self.payload = "Observable Resource"
+        if not self._coap_server.stopped.isSet():
+            timer = threading.Timer(self.period, self.update)
+            timer.daemon = True
+            timer.start()
 
-        def run():
-            while not self._coap_server.stopped.isSet():
-                time.sleep(self.period)
-                
-                if self._coap_server is not None:
-                    self._coap_server.notify(self)
-
-        update_thread = threading.Thread(target=run)
-        update_thread.setDaemon(True)
-        update_thread.start()
+            if not first and self._coap_server is not None:
+                self._coap_server.notify(self)
+                self.observe_count += 1
 
