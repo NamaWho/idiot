@@ -236,13 +236,13 @@ void notification_server_callback(coap_observee_t *obs, void *notification,
   case NOTIFICATION_OK:
     LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
+    // Split payload into individual sensor data
     char *token;
     char *rest = payload_str;
-    // 0 -> pressure, 1 -> vibration, 2 -> voltage, 3 -> rotation
     char *sensors[4] = {NULL, NULL, NULL, NULL};
 
     int i = 0;
-    while ((token = strtok_r(rest, ",", &rest)) && i < 4)
+    while ((token = strtok_r(rest, ";", &rest)) && i < 4)
     {
       sensors[i++] = token;
     }
@@ -258,7 +258,7 @@ void notification_server_callback(coap_observee_t *obs, void *notification,
     char *voltage_sensor = sensors[2];
     char *rotation_sensor = sensors[3];
 
-    // Parse the IP addresses and statuses
+    // Further split each sensor data into IP and status
     char *pressure_ip_port = strtok(pressure_sensor, "-");
     double new_pressure_status = atof(strtok(NULL, "-"));
 
@@ -271,7 +271,8 @@ void notification_server_callback(coap_observee_t *obs, void *notification,
     char *rotation_ip_port = strtok(rotation_sensor, "-");
     double new_rotation_status = atof(strtok(NULL, "-"));
 
-    // if any of the IP addresses is null, return
+
+   // if any of the IP addresses is null, return
     if (!rotation_ip_port || !voltage_ip_port || !pressure_ip_port || !vibration_ip_port)
     {
       LOG_ERR("Null data received: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
@@ -290,50 +291,6 @@ void notification_server_callback(coap_observee_t *obs, void *notification,
     LOG_INFO("Pressure IP: %s\n", pressure_ip_port);
     LOG_INFO("Vibration IP: %s\n", vibration_ip_port);
 
-    // Parse the response to get the IP addresses of the sensors
-    // char *rotation_sensor = json_parse_object((char *)payload, "rotation");
-    // char *voltage_sensor = json_parse_object((char *)payload, "voltage");
-    // char *pressure_sensor = json_parse_object((char *)payload, "pressure");
-    // char *vibration_sensor = json_parse_object((char *)payload, "vibration");
-
-    // if (rotation_sensor == NULL || voltage_sensor == NULL || pressure_sensor == NULL || vibration_sensor == NULL)
-    // {
-    //   LOG_ERR("Null data received: rotation_sensor: %s, voltage_sensor: %s, pressure_sensor: %s, vibration_sensor: %s\n", rotation_sensor, voltage_sensor, pressure_sensor, vibration_sensor);
-    //   LOG_ERR("%*s", len, (char *)payload);
-    //   break;
-    // }
-
-    // Extract the IP addresses from the response
-    // char *rotation_ip_port = json_parse_string((char *)rotation_sensor, "ip_port");
-    // char *voltage_ip_port = json_parse_string((char *)voltage_sensor, "ip_port");
-    // char *pressure_ip_port = json_parse_string((char *)pressure_sensor, "ip_port");
-    // char *vibration_ip_port = json_parse_string((char *)vibration_sensor, "ip_port");
-
-    // if any of the IP addresses is null, return
-    // if (rotation_ip_port == NULL || voltage_ip_port == NULL || pressure_ip_port == NULL || vibration_ip_port == NULL)
-    // {
-    //   LOG_ERR("Null data received: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
-    //   LOG_ERR("%*s", len, (char *)payload);
-    //   break;
-    // }
-
-    // parse the strings to get the status of the sensors
-    // double new_rotation_status = json_parse_number((char *)rotation_sensor, "status");
-    // double new_voltage_status = json_parse_number((char *)voltage_sensor, "status");
-    // double new_pressure_status = json_parse_number((char *)pressure_sensor, "status");
-    // double new_vibration_status = json_parse_number((char *)vibration_sensor, "status");
-
-    // if the status of the sensors is different from the previous one, update the status
-    // LOG_INFO("Rotation status: %.2f\n", new_rotation_status);
-    // LOG_INFO("Voltage status: %.2f\n", new_voltage_status);
-    // LOG_INFO("Pressure status: %.2f\n", new_pressure_status);
-    // LOG_INFO("Vibration status: %.2f\n", new_vibration_status);
-
-    // LOG_INFO("Rotation IP: %s\n", rotation_ip_port);
-    // LOG_INFO("Voltage IP: %s\n", voltage_ip_port);
-    // LOG_INFO("Pressure IP: %s\n", pressure_ip_port);
-    // LOG_INFO("Vibration IP: %s\n", vibration_ip_port);
-
     // Parse the extracted IP addresses to coap_endpoint_t structures
     static coap_endpoint_t rotation_server_ep;
     static coap_endpoint_t voltage_server_ep;
@@ -344,7 +301,7 @@ void notification_server_callback(coap_observee_t *obs, void *notification,
     coap_endpoint_parse(voltage_ip_port, strlen(voltage_ip_port), &voltage_server_ep);
     coap_endpoint_parse(pressure_ip_port, strlen(pressure_ip_port), &pressure_server_ep);
     coap_endpoint_parse(vibration_ip_port, strlen(vibration_ip_port), &vibration_server_ep);
-
+    
     // Observe the resources
     if (new_rotation_status != rotation_status)
     {
