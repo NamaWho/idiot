@@ -57,9 +57,5 @@ if __name__ == "__main__":
 
         
     except KeyboardInterrupt:
-        # thread.join()
-        # thread1.join()
-        # server.close()
-        # thread2.join()
         print("SHUTDOWN")
         os._exit(0)

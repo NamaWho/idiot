@@ -35,7 +35,6 @@ class Control(Resource):
             "voltage": {"status": 0, "ip_address": ""},
             "rotation": {"status": 0, "ip_address": ""}
         }  
-        
         try:
             cursor = self.connection.cursor()
             select_sensor_query = """
@@ -54,19 +53,18 @@ class Control(Resource):
 
             # if all sesnors are registered and status is 1, then send the payload
             if all([values["ip_address"] != "" and values["status"] == 1 for values in sensors.values()]):
-                json_payload = {
-                    "pressure": sensors["pressure"]["ip_address"],
-                    "vibration": sensors["vibration"]["ip_address"],
-                    "voltage": sensors["voltage"]["ip_address"],
-                    "rotation": sensors["rotation"]["ip_address"]
-                }
-                self.payload = json.dumps(json_payload)
+                ip_addresses = [
+                    sensors["pressure"]["ip_address"].replace("fd00::", ""),
+                    sensors["vibration"]["ip_address"].replace("fd00::", ""),
+                    sensors["voltage"]["ip_address"].replace("fd00::", ""),
+                    sensors["rotation"]["ip_address"].replace("fd00::", "")
+                ]
+                self.payload = ";".join(ip_addresses)
                 print(f"Payload: {self.payload}")
 
             else:
                 self.payload = None
                 print(f"Not all sensors are registered, Payload: {self.payload}")
-                
         
         except Error as e:
             self.payload = None

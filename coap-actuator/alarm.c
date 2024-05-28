@@ -34,12 +34,12 @@
 static int max_registration_retry = MAX_REGISTRATION_RETRY;
 static int max_retry = 3;
 
-/*static int status = 0;
+// static int status = 0;
 
-static double rotation_status = 0.0;
-static double voltage_status = 0.0;
-static double pressure_status = 0.0;
-static double vibration_status = 0.0;*/
+// static double rotation_status = 0.0;
+// static double voltage_status = 0.0;
+// static double pressure_status = 0.0;
+// static double vibration_status = 0.0;
 
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
@@ -49,11 +49,20 @@ static double vibration_status = 0.0;*/
 /*----------------------------------------------------------------------------*/
 
 static coap_endpoint_t main_server_ep;
-/*static coap_observee_t *obs_rotation;
+static coap_endpoint_t obs_rotation_ep;
+static coap_endpoint_t obs_voltage_ep;
+static coap_endpoint_t obs_pressure_ep;
+static coap_endpoint_t obs_vibration_ep;
+static coap_observee_t *obs_rotation;
 static coap_observee_t *obs_voltage;
 static coap_observee_t *obs_pressure;
 static coap_observee_t *obs_vibration;
-static coap_observee_t *obs_control;*/
+// static coap_observee_t *obs_control;
+
+static char res_uri_pressure[50];
+static char res_uri_vibration[50];
+static char res_uri_voltage[50];
+static char res_uri_rotation[50];
 
 /*----------------------------------------------------------------------------*/
 
@@ -70,116 +79,116 @@ static DynamicQueue vibration_queue;
 /* ----------------------- SIGNATURES ----------------------- */
 static void client_chunk_handler_registration(coap_message_t *response);
 
-//static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
-//sstatic void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
-
+// static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
+static void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
+static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
 static void actuator_chunk_handler(coap_message_t *response);
-//static int store_value(char *sensor, double value);
+// static int store_value(char *sensor, double value);
 /*----------------------------------------------------------------*/
 
 /*
  * Handle the value received from the sensor
  */
-/*static int store_value(char *sensor, double value)
-{
-  if (strcmp(sensor, "rotation") == 0)
-  {
-    LOG_INFO("Rotation: %.2f\n", value);
-    // Insert the value in the queue
-    enqueue(&rotation_queue, value);
-  }
-  else if (strcmp(sensor, "voltage") == 0)
-  {
-    LOG_INFO("Voltage: %.2f\n", value);
-    // Insert the value in the queue
-    enqueue(&voltage_queue, value);
-  }
-  else if (strcmp(sensor, "pressure") == 0)
-  {
-    LOG_INFO("Pressure: %.2f\n", value);
-    // Insert the value in the queue
-    enqueue(&pressure_queue, value);
-  }
-  else if (strcmp(sensor, "vibration") == 0)
-  {
-    LOG_INFO("Vibration: %.2f\n", value);
-    // Insert the value in the queue
-    enqueue(&vibration_queue, value);
-  }
-  else
-  {
-    LOG_INFO("Invalid sensor\n");
-    return -1;
-  }
+// static int store_value(char *sensor, double value)
+// {
+//   if (strcmp(sensor, "rotation") == 0)
+//   {
+//     LOG_INFO("Rotation: %.2f\n", value);
+//     // Insert the value in the queue
+//     enqueue(&rotation_queue, value);
+//   }
+//   else if (strcmp(sensor, "voltage") == 0)
+//   {
+//     LOG_INFO("Voltage: %.2f\n", value);
+//     // Insert the value in the queue
+//     enqueue(&voltage_queue, value);
+//   }
+//   else if (strcmp(sensor, "pressure") == 0)
+//   {
+//     LOG_INFO("Pressure: %.2f\n", value);
+//     // Insert the value in the queue
+//     enqueue(&pressure_queue, value);
+//   }
+//   else if (strcmp(sensor, "vibration") == 0)
+//   {
+//     LOG_INFO("Vibration: %.2f\n", value);
+//     // Insert the value in the queue
+//     enqueue(&vibration_queue, value);
+//   }
+//   else
+//   {
+//     LOG_INFO("Invalid sensor\n");
+//     return -1;
+//   }
 
-  return 0;
-}*/
+//   return 0;
+// }
 
 /*
  * Handle the response to the observe request and the following notifications
  */
-/*static void
+static void
 notification_callback(coap_observee_t *obs, void *notification,
                       coap_notification_flag_t flag)
 {
-  int len = 0;
-  const uint8_t *payload = NULL;
+  // int len = 0;
+  // const uint8_t *payload = NULL;
 
   LOG_INFO("Notification handler\n");
   LOG_INFO("Observee URI: %s\n", obs->url);
 
-  if (notification)
-  {
-    len = coap_get_payload(notification, &payload);
-  }
-  switch (flag)
-  {
+  // if (notification)
+  // {
+  //   len = coap_get_payload(notification, &payload);
+  // }
+  // switch (flag)
+  // {
 
-  case NOTIFICATION_OK:
-    LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
+  // case NOTIFICATION_OK:
+  //   LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
-    char *sensor = json_parse_string((char *)payload, "sensor");
-    double value = json_parse_number((char *)payload, "value");
+  //   char *sensor = json_parse_string((char *)payload, "sensor");
+  //   double value = json_parse_number((char *)payload, "value");
 
-    LOG_INFO("Sensor: %s\n", sensor);
-    LOG_INFO("Value: %.2f\n", value);
+  //   LOG_INFO("Sensor: %s\n", sensor);
+  //   LOG_INFO("Value: %.2f\n", value);
 
-    // verify if the values are valid: sesnor must not be null and value must be greater than 0
-    if (sensor == NULL || value < 0)
-    {
-      LOG_INFO("Invalid sensor or value\n");
-      return;
-    }
+  //   // verify if the values are valid: sesnor must not be null and value must be greater than 0
+  //   if (sensor == NULL || value < 0)
+  //   {
+  //     LOG_INFO("Invalid sensor or value\n");
+  //     return;
+  //   }
 
-    // call a function to handle the store of the value
-    store_value(sensor, value);
+  //   // call a function to handle the store of the value
+  //   store_value(sensor, value);
 
-    break;
+  //   break;
 
-  case OBSERVE_OK:
-    LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
-    break;
-  case OBSERVE_NOT_SUPPORTED:
-    LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
-    obs = NULL;
-    break;
-  case ERROR_RESPONSE_CODE:
-    LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
-    obs = NULL;
-    break;
-  case NO_REPLY_FROM_SERVER:
-    LOG_INFO("NO_REPLY_FROM_SERVER: "
-             "removing observe registration with token %x%x\n",
-             obs->token[0], obs->token[1]);
-    obs = NULL;
-    break;
-  }
-}*/
+  // case OBSERVE_OK:
+  //   LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
+  //   break;
+  // case OBSERVE_NOT_SUPPORTED:
+  //   LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
+  //   obs = NULL;
+  //   break;
+  // case ERROR_RESPONSE_CODE:
+  //   LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
+  //   obs = NULL;
+  //   break;
+  // case NO_REPLY_FROM_SERVER:
+  //   LOG_INFO("NO_REPLY_FROM_SERVER: "
+  //            "removing observe registration with token %x%x\n",
+  //            obs->token[0], obs->token[1]);
+  //   obs = NULL;
+  //   break;
+  // }
+}
 
 /*
  * Toggle the observation of the remote resource
  */
-/*static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
+static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
 {
   if (obs)
   {
@@ -192,9 +201,7 @@ notification_callback(coap_observee_t *obs, void *notification,
     LOG_INFO("Starting observation at %s\n", res_uri);
     obs = coap_obs_request_registration(server_ep, res_uri, notification_callback, NULL);
   }
-}*/
-
-
+}
 
 static void client_chunk_handler_registration(coap_message_t *response)
 {
@@ -231,16 +238,76 @@ static void actuator_chunk_handler(coap_message_t *response)
 
     int len = coap_get_payload(response, &payload);
 
-    if(len > 0){
-      
-        LOG_INFO("Received response: %s\n", (char *)payload);
-        char *sensor = json_parse_string((char *)payload, "pressure");
-        LOG_INFO("Sensor: %s\n", sensor);
-        max_retry = 0; // if = 0 --> data received!
-        return;
+    if (len > 0)
+    {
+
+      LOG_INFO("Received response: %s\n", (char *)payload);
+
+      /*  Parse the payload
+          Example Payload: 202:2:2:2;204:4:4:4;205:5:5:5;203:3:3:3
+          1. Split the payload by ";"
+          2. For each sensor:
+              - add prefix "coap://[fd00::"
+              - add suffix "]:5683"
+
+          Recalling order of sensors:
+          1. Pressure
+          2. Vibration
+          3. Voltage
+          4. Rotation
+
+          Recalling example:
+          1. Pressure: coap://[fd00::202:2:2:2]:5683
+          2. Vibration: coap://[fd00::204:4:4:4]:5683
+          3. Voltage: coap://[fd00::205:5:5:5]:5683
+          4. Rotation: coap://[fd00::203:3:3:3]:5683
+      */
+      char *sensor = strtok((char *)payload, ";");
+      int i = 0;
+      while (sensor != NULL)
+      {
+
+        switch (i)
+        {
+        case 0:
+          snprintf(res_uri_pressure, sizeof(res_uri_pressure), "coap://[fd00::%s]:5683", sensor);
+          LOG_INFO("Pressure URI: %s\n", res_uri_pressure);
+          coap_endpoint_parse(res_uri_pressure, strlen(res_uri_pressure), &obs_pressure_ep);
+          toggle_observation(obs_pressure, &obs_pressure_ep, "/pressure");
+          break;
+        case 1:
+          snprintf(res_uri_vibration, sizeof(res_uri_vibration), "coap://[fd00::%s]:5683", sensor);
+          LOG_INFO("Vibration URI: %s\n", res_uri_vibration);
+          coap_endpoint_parse(res_uri_vibration, strlen(res_uri_vibration), &obs_vibration_ep);
+          toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
+          break;
+        case 2:
+          snprintf(res_uri_voltage, sizeof(res_uri_voltage), "coap://[fd00::%s]:5683", sensor);
+          LOG_INFO("Voltage URI: %s\n", res_uri_voltage);
+          coap_endpoint_parse(res_uri_voltage, strlen(res_uri_voltage), &obs_voltage_ep);
+          toggle_observation(obs_voltage, &obs_voltage_ep, "/voltage");
+          break;
+        case 3:
+          snprintf(res_uri_rotation, sizeof(res_uri_rotation), "coap://[fd00::%s]:5683", sensor);
+          LOG_INFO("Rotation URI: %s\n", res_uri_rotation);
+          coap_endpoint_parse(res_uri_rotation, strlen(res_uri_rotation), &obs_rotation_ep);
+          toggle_observation(obs_rotation, &obs_rotation_ep, "/rotation");
+          break;
+        default:
+          break;
+        }
+        i++;
+
+        sensor = strtok(NULL, ";");
+      }
+
+      // if all the sensors are observed, set max_retry to 0
+      max_retry = 0;
+      return;
     }
-    else{
-        LOG_INFO("Empty payload\n");
+    else
+    {
+      LOG_INFO("Empty payload\n");
     }
   }
 
@@ -254,7 +321,6 @@ PROCESS_THREAD(alarm_client, ev, data)
 {
   static struct etimer et, sleep_timer;
   static coap_message_t request[1];
-
 
   PROCESS_BEGIN();
 
@@ -286,8 +352,6 @@ PROCESS_THREAD(alarm_client, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);
-  
-  
 
   // retrieve the IPs of the sensors
   LOG_INFO("Retrieving IPs of sensors\n");
@@ -309,8 +373,8 @@ PROCESS_THREAD(alarm_client, ev, data)
 
     /* -------------- END --------------*/
     if (max_retry == -1)
-    { 
-      etimer_set(&sleep_timer, 30 * CLOCK_SECOND);
+    {
+      etimer_set(&sleep_timer, 10 * CLOCK_SECOND);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
       max_retry = 3;
     }
@@ -319,8 +383,6 @@ PROCESS_THREAD(alarm_client, ev, data)
   LOG_INFO("IPs RETRIEVED\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);
-
-
 
   // set the timer
   etimer_set(&et, 60 * CLOCK_SECOND);
