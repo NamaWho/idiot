@@ -18,22 +18,19 @@ class Control(Resource):
         "rotation": {"status": 0, "ip_address": ""}
     }  
 
-    def __init__(self, name="Control", coap_server=None, resource_key=None, subresources_keys=None):
+    def __init__(self, name="Control", coap_server=None):
         super(Control, self).__init__(name, coap_server, visible=True, observable=True, allow_children=False)
         self.payload = "Control Resource"
-        self.resource_key = resource_key
-        self.subresources_keys = subresources_keys
-        self.content_type = "text/plain"
         self.database = coap_server.db if coap_server else Database()
         self.connection = self.database.connect_db()
-        self.period = 30       
+        self.period = 10       
         self.update(True)
 
     def render_GET(self, request):
         print(f"RENDER GET")
         self.fetch_sensors_from_db()
         self.update_sensors_status()
-        print(f"Payload sent back: {self.payload}")
+        print(f"Payload sent: {self.payload}")
         return self
     
     def fetch_sensors_from_db(self):
