@@ -200,26 +200,26 @@ notification_callback(coap_observee_t *obs, void *notification,
   int len = 0;
   const uint8_t *payload = NULL;
 
-  LOG_INFO("Notification handler\n");
-  LOG_INFO("Observee URI (server): %s\n", obs->url);
-
   if (notification)
   {
     len = coap_get_payload(notification, &payload);
-  }
+    LOG_INFO("Payload length: %d\n", len);
 
-  // Added logging to debug payload content and length
-  LOG_INFO("Payload length: %d\n", len);
-  if (payload != NULL && len > 0)
-  {
-    char payload_debug[len + 1];
-    strncpy(payload_debug, (char *)payload, len);
-    payload_debug[len] = '\0';
-    LOG_INFO("Raw payload: %s\n", payload_debug);
-  }
-  else
-  {
-    LOG_INFO("Payload is NULL or empty\n");
+    // Log payload in hexadecimal format
+    if (len > 0)
+    {
+      char hex_payload[len * 3 + 1];
+      for (int i = 0; i < len; i++)
+      {
+        snprintf(&hex_payload[i * 3], 4, "%02x ", payload[i]);
+      }
+      hex_payload[len * 3] = '\0';
+      LOG_INFO("Hex Payload: %s\n", hex_payload);
+    }
+    else
+    {
+      LOG_INFO("Payload is empty\n");
+    }
   }
 
   if (len <= 0)
@@ -232,6 +232,8 @@ notification_callback(coap_observee_t *obs, void *notification,
   char payload_str[len + 1];
   strncpy(payload_str, (char *)payload, len);
   payload_str[len] = '\0';
+
+  LOG_INFO("Parsed payload: %s\n", payload_str);
 
   switch (flag)
   {
@@ -260,6 +262,11 @@ notification_callback(coap_observee_t *obs, void *notification,
     char *voltage_sensor = sensors[2];
     char *rotation_sensor = sensors[3];
 
+    LOG_INFO("Pressure sensor: %s\n", pressure_sensor);
+    LOG_INFO("Vibration sensor: %s\n", vibration_sensor);
+    LOG_INFO("Voltage sensor: %s\n", voltage_sensor);
+    LOG_INFO("Rotation sensor: %s\n", rotation_sensor);
+
     // Further split each sensor data into IP and status
     char *pressure_ip_port = strtok(pressure_sensor, "-");
     double new_pressure_status = atof(strtok(NULL, "-"));
@@ -274,24 +281,19 @@ notification_callback(coap_observee_t *obs, void *notification,
     double new_rotation_status = atof(strtok(NULL, "-"));
 
 
-   // if any of the IP addresses is null, return
+    // Log the split parts
+    LOG_INFO("Pressure IP: %s, Status: %.2f\n", pressure_ip_port, new_pressure_status);
+    LOG_INFO("Vibration IP: %s, Status: %.2f\n", vibration_ip_port, new_vibration_status);
+    LOG_INFO("Voltage IP: %s, Status: %.2f\n", voltage_ip_port, new_voltage_status);
+    LOG_INFO("Rotation IP: %s, Status: %.2f\n", rotation_ip_port, new_rotation_status);
+
+    // if any of the IP addresses is null, return
     if (!rotation_ip_port || !voltage_ip_port || !pressure_ip_port || !vibration_ip_port)
     {
       LOG_ERR("Null data received: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
       LOG_ERR("%*s", len, (char *)payload);
       break;
     }
-
-    // Update the status logs
-    LOG_INFO("Rotation status: %.2f\n", new_rotation_status);
-    LOG_INFO("Voltage status: %.2f\n", new_voltage_status);
-    LOG_INFO("Pressure status: %.2f\n", new_pressure_status);
-    LOG_INFO("Vibration status: %.2f\n", new_vibration_status);
-
-    LOG_INFO("Rotation IP: %s\n", rotation_ip_port);
-    LOG_INFO("Voltage IP: %s\n", voltage_ip_port);
-    LOG_INFO("Pressure IP: %s\n", pressure_ip_port);
-    LOG_INFO("Vibration IP: %s\n", vibration_ip_port);
 
     // Parse the extracted IP addresses to coap_endpoint_t structures
     static coap_endpoint_t rotation_server_ep;
@@ -303,7 +305,7 @@ notification_callback(coap_observee_t *obs, void *notification,
     coap_endpoint_parse(voltage_ip_port, strlen(voltage_ip_port), &voltage_server_ep);
     coap_endpoint_parse(pressure_ip_port, strlen(pressure_ip_port), &pressure_server_ep);
     coap_endpoint_parse(vibration_ip_port, strlen(vibration_ip_port), &vibration_server_ep);
-    
+
     // Observe the resources
     if (new_rotation_status != rotation_status)
     {
