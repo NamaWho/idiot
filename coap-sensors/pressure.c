@@ -93,7 +93,6 @@ PROCESS_THREAD(pressure_server, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   
-
   coap_activate_resource(&res_pressure, "pressure");
   coap_activate_resource(&res_pressure_status, "pressure/status");
   

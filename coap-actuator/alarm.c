@@ -83,46 +83,46 @@ static void client_chunk_handler_registration(coap_message_t *response);
 static void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
 static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
 static void actuator_chunk_handler(coap_message_t *response);
-// static int store_value(char *sensor, double value);
+static int store_value(char *sensor, double value);
 /*----------------------------------------------------------------*/
 
 /*
  * Handle the value received from the sensor
  */
-// static int store_value(char *sensor, double value)
-// {
-//   if (strcmp(sensor, "rotation") == 0)
-//   {
-//     LOG_INFO("Rotation: %.2f\n", value);
-//     // Insert the value in the queue
-//     enqueue(&rotation_queue, value);
-//   }
-//   else if (strcmp(sensor, "voltage") == 0)
-//   {
-//     LOG_INFO("Voltage: %.2f\n", value);
-//     // Insert the value in the queue
-//     enqueue(&voltage_queue, value);
-//   }
-//   else if (strcmp(sensor, "pressure") == 0)
-//   {
-//     LOG_INFO("Pressure: %.2f\n", value);
-//     // Insert the value in the queue
-//     enqueue(&pressure_queue, value);
-//   }
-//   else if (strcmp(sensor, "vibration") == 0)
-//   {
-//     LOG_INFO("Vibration: %.2f\n", value);
-//     // Insert the value in the queue
-//     enqueue(&vibration_queue, value);
-//   }
-//   else
-//   {
-//     LOG_INFO("Invalid sensor\n");
-//     return -1;
-//   }
+static int store_value(char *sensor, double value)
+{
+  if (strcmp(sensor, "rotation") == 0)
+  {
+    LOG_INFO("Rotation: %.2f\n", value);
+    // Insert the value in the queue
+    enqueue(&rotation_queue, value);
+  }
+  else if (strcmp(sensor, "voltage") == 0)
+  {
+    LOG_INFO("Voltage: %.2f\n", value);
+    // Insert the value in the queue
+    enqueue(&voltage_queue, value);
+  }
+  else if (strcmp(sensor, "pressure") == 0)
+  {
+    LOG_INFO("Pressure: %.2f\n", value);
+    // Insert the value in the queue
+    enqueue(&pressure_queue, value);
+  }
+  else if (strcmp(sensor, "vibration") == 0)
+  {
+    LOG_INFO("Vibration: %.2f\n", value);
+    // Insert the value in the queue
+    enqueue(&vibration_queue, value);
+  }
+  else
+  {
+    LOG_INFO("Invalid sensor\n");
+    return -1;
+  }
 
-//   return 0;
-// }
+  return 0;
+}
 
 /*
  * Handle the response to the observe request and the following notifications
@@ -131,58 +131,52 @@ static void
 notification_callback(coap_observee_t *obs, void *notification,
                       coap_notification_flag_t flag)
 {
-  // int len = 0;
-  // const uint8_t *payload = NULL;
+  int len = 0;
+  const uint8_t *payload = NULL;
 
-  LOG_INFO("Notification handler\n");
-  LOG_INFO("Observee URI: %s\n", obs->url);
+  if (notification)
+  {
+    len = coap_get_payload(notification, &payload);
+  }
+  switch (flag)
+  {
 
-  // if (notification)
-  // {
-  //   len = coap_get_payload(notification, &payload);
-  // }
-  // switch (flag)
-  // {
+  case NOTIFICATION_OK:
+    LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
 
-  // case NOTIFICATION_OK:
-  //   LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
+    char *sensor = json_parse_string((char *)payload, "sensor");
+    double value = json_parse_number((char *)payload, "value");
 
-  //   char *sensor = json_parse_string((char *)payload, "sensor");
-  //   double value = json_parse_number((char *)payload, "value");
+    // verify if the values are valid: sesnor must not be null and value must be greater than 0
+    if (sensor == NULL || value < 0)
+    {
+      LOG_INFO("Invalid sensor or value\n");
+      return;
+    }
 
-  //   LOG_INFO("Sensor: %s\n", sensor);
-  //   LOG_INFO("Value: %.2f\n", value);
+    // call a function to handle the store of the value
+    store_value(sensor, value);
 
-  //   // verify if the values are valid: sesnor must not be null and value must be greater than 0
-  //   if (sensor == NULL || value < 0)
-  //   {
-  //     LOG_INFO("Invalid sensor or value\n");
-  //     return;
-  //   }
+    break;
 
-  //   // call a function to handle the store of the value
-  //   store_value(sensor, value);
-
-  //   break;
-
-  // case OBSERVE_OK:
-  //   LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
-  //   break;
-  // case OBSERVE_NOT_SUPPORTED:
-  //   LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
-  //   obs = NULL;
-  //   break;
-  // case ERROR_RESPONSE_CODE:
-  //   LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
-  //   obs = NULL;
-  //   break;
-  // case NO_REPLY_FROM_SERVER:
-  //   LOG_INFO("NO_REPLY_FROM_SERVER: "
-  //            "removing observe registration with token %x%x\n",
-  //            obs->token[0], obs->token[1]);
-  //   obs = NULL;
-  //   break;
-  // }
+  case OBSERVE_OK:
+    LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
+    break;
+  case OBSERVE_NOT_SUPPORTED:
+    LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
+    obs = NULL;
+    break;
+  case ERROR_RESPONSE_CODE:
+    LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
+    obs = NULL;
+    break;
+  case NO_REPLY_FROM_SERVER:
+    LOG_INFO("NO_REPLY_FROM_SERVER: "
+             "removing observe registration with token %x%x\n",
+             obs->token[0], obs->token[1]);
+    obs = NULL;
+    break;
+  }
 }
 
 /*
@@ -262,7 +256,8 @@ static void actuator_chunk_handler(coap_message_t *response)
           3. Voltage: coap://[fd00::205:5:5:5]:5683
           4. Rotation: coap://[fd00::203:3:3:3]:5683
       */
-      char *sensor = strtok((char *)payload, ";");
+      char *payload_copy = strdup((char *)payload);
+      char *sensor = strtok((char *)payload_copy, ";");
       int i = 0;
       while (sensor != NULL)
       {
@@ -300,6 +295,8 @@ static void actuator_chunk_handler(coap_message_t *response)
 
         sensor = strtok(NULL, ";");
       }
+
+      free(payload_copy);
 
       // if all the sensors are observed, set max_retry to 0
       max_retry = 0;
@@ -386,17 +383,21 @@ PROCESS_THREAD(alarm_client, ev, data)
 
   // set the timer
   etimer_set(&et, 60 * CLOCK_SECOND);
+  initQueue(&rotation_queue);
+  initQueue(&voltage_queue);
+  initQueue(&pressure_queue);
+  initQueue(&vibration_queue);
 
   while (1)
   {
     PROCESS_YIELD();
-
+    LOG_INFO("Alarm actuator\n");
     if (etimer_expired(&et))
     {
-
+      LOG_INFO("Timer expired\n");
       // if all the queues have 24 elements, make a prediction
 
-      if (rotation_queue.size == 24 && voltage_queue.size == 24 && pressure_queue.size == 24 && vibration_queue.size == 24)
+      if (rotation_queue.is_full && voltage_queue.is_full && pressure_queue.is_full && vibration_queue.is_full)
       {
 
         // prepare vector of float values: calculate the mean of the values in the queue
@@ -430,5 +431,9 @@ PROCESS_THREAD(alarm_client, ev, data)
     }
   }
 
+  freeQueue(&rotation_queue);
+  freeQueue(&voltage_queue);
+  freeQueue(&pressure_queue);
+  freeQueue(&vibration_queue);
   PROCESS_END();
 }

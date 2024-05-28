@@ -6,6 +6,7 @@ typedef struct {
     double *buffer;   // dynamic array to store the elements
     int max_capacity;   // maximum capacity of the array
     int size;         // current size of the array
+    int is_full;      // flag to check if the array is full
 
 } DynamicQueue;
 
