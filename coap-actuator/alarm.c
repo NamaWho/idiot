@@ -69,10 +69,10 @@ static DynamicQueue vibration_queue;
 
 /* ----------------------- SIGNATURES ----------------------- */
 static void client_chunk_handler_registration(coap_message_t *response);
-//static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
+
 //static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
 //sstatic void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
-//static void notification_server_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
+
 static void actuator_chunk_handler(coap_message_t *response);
 //static int store_value(char *sensor, double value);
 /*----------------------------------------------------------------*/
@@ -194,182 +194,7 @@ notification_callback(coap_observee_t *obs, void *notification,
   }
 }*/
 
-/*void notification_server_callback(coap_observee_t *obs, void *notification,
-                                  coap_notification_flag_t flag)
-{
-  int len = 0;
-  const uint8_t *payload = NULL;
 
-  if (notification)
-  {
-    len = coap_get_payload(notification, &payload);
-    LOG_INFO("Payload length: %d\n", len);
-
-    // Log payload in hexadecimal format
-    if (len > 0)
-    {
-      char hex_payload[len * 3 + 1];
-      for (int i = 0; i < len; i++)
-      {
-        snprintf(&hex_payload[i * 3], 4, "%02x ", payload[i]);
-      }
-      hex_payload[len * 3] = '\0';
-      LOG_INFO("Hex Payload: %s\n", hex_payload);
-    }
-    else
-    {
-      LOG_INFO("Payload is empty\n");
-    }
-  }
-
-  if (len <= 0)
-  {
-    LOG_ERR("Empty payload\n");
-    return;
-  }
-
-  // Extract the IP addresses and statuses from the response
-  char payload_str[len + 1];
-  strncpy(payload_str, (char *)payload, len);
-  payload_str[len] = '\0';
-
-  LOG_INFO("Parsed payload: %s\n", payload_str);
-
-  switch (flag)
-  {
-  case NOTIFICATION_OK:
-    LOG_INFO("NOTIFICATION OK: %*s\n", len, (char *)payload);
-
-    // Split payload into individual sensor data
-    char *token;
-    char *rest = payload_str;
-    char *sensors[4] = {NULL, NULL, NULL, NULL};
-
-    int i = 0;
-    while ((token = strtok_r(rest, ";", &rest)) && i < 4)
-    {
-      sensors[i++] = token;
-    }
-
-    if (i != 4)
-    {
-      LOG_ERR("Invalid payload format\n");
-      return;
-    }
-
-    char *pressure_sensor = sensors[0];
-    char *vibration_sensor = sensors[1];
-    char *voltage_sensor = sensors[2];
-    char *rotation_sensor = sensors[3];
-
-    LOG_INFO("Pressure sensor: %s\n", pressure_sensor);
-    LOG_INFO("Vibration sensor: %s\n", vibration_sensor);
-    LOG_INFO("Voltage sensor: %s\n", voltage_sensor);
-    LOG_INFO("Rotation sensor: %s\n", rotation_sensor);
-
-    // Further split each sensor data into IP and status
-    char *pressure_ip_port = strtok(pressure_sensor, "-");
-    double new_pressure_status = atof(strtok(NULL, "-"));
-
-    char *vibration_ip_port = strtok(vibration_sensor, "-");
-    double new_vibration_status = atof(strtok(NULL, "-"));
-
-    char *voltage_ip_port = strtok(voltage_sensor, "-");
-    double new_voltage_status = atof(strtok(NULL, "-"));
-
-    char *rotation_ip_port = strtok(rotation_sensor, "-");
-    double new_rotation_status = atof(strtok(NULL, "-"));
-
-
-    // Log the split parts
-    LOG_INFO("Pressure IP: %s, Status: %.2f\n", pressure_ip_port, new_pressure_status);
-    LOG_INFO("Vibration IP: %s, Status: %.2f\n", vibration_ip_port, new_vibration_status);
-    LOG_INFO("Voltage IP: %s, Status: %.2f\n", voltage_ip_port, new_voltage_status);
-    LOG_INFO("Rotation IP: %s, Status: %.2f\n", rotation_ip_port, new_rotation_status);
-
-    // if any of the IP addresses is null, return
-    if (!rotation_ip_port || !voltage_ip_port || !pressure_ip_port || !vibration_ip_port)
-    {
-      LOG_ERR("Null data received: rotation_ip_port: %s, voltage_ip_port: %s, pressure_ip_port: %s, vibration_ip_port: %s\n", rotation_ip_port, voltage_ip_port, pressure_ip_port, vibration_ip_port);
-      LOG_ERR("%*s", len, (char *)payload);
-      break;
-    }
-
-    // Parse the extracted IP addresses to coap_endpoint_t structures
-    static coap_endpoint_t rotation_server_ep;
-    static coap_endpoint_t voltage_server_ep;
-    static coap_endpoint_t pressure_server_ep;
-    static coap_endpoint_t vibration_server_ep;
-
-    coap_endpoint_parse(rotation_ip_port, strlen(rotation_ip_port), &rotation_server_ep);
-    coap_endpoint_parse(voltage_ip_port, strlen(voltage_ip_port), &voltage_server_ep);
-    coap_endpoint_parse(pressure_ip_port, strlen(pressure_ip_port), &pressure_server_ep);
-    coap_endpoint_parse(vibration_ip_port, strlen(vibration_ip_port), &vibration_server_ep);
-
-    // Observe the resources
-    if (new_rotation_status != rotation_status)
-    {
-      rotation_status = new_rotation_status;
-      toggle_observation(obs_rotation, &rotation_server_ep, "/rotation");
-    }
-    if (new_voltage_status != voltage_status)
-    {
-      voltage_status = new_voltage_status;
-      toggle_observation(obs_voltage, &voltage_server_ep, "/voltage");
-    }
-    if (new_pressure_status != pressure_status)
-    {
-      pressure_status = new_pressure_status;
-      toggle_observation(obs_pressure, &pressure_server_ep, "/pressure");
-    }
-    if (new_vibration_status != vibration_status)
-    {
-      vibration_status = new_vibration_status;
-      toggle_observation(obs_vibration, &vibration_server_ep, "/vibration");
-    }
-
-    // If all sensors are active, activate the actuator
-    if (rotation_status && voltage_status && pressure_status && vibration_status)
-      status = 1;
-    else
-      status = 0;
-
-    break;
-
-  case OBSERVE_OK:
-    LOG_INFO("OBSERVE_OK: %*s\n", len, (char *)payload);
-    break;
-  case OBSERVE_NOT_SUPPORTED:
-    LOG_INFO("OBSERVE_NOT_SUPPORTED: %*s\n", len, (char *)payload);
-    obs = NULL;
-    break;
-  case ERROR_RESPONSE_CODE:
-    LOG_INFO("ERROR_RESPONSE_CODE: %*s\n", len, (char *)payload);
-    obs = NULL;
-    break;
-  case NO_REPLY_FROM_SERVER:
-    LOG_INFO("NO_REPLY_FROM_SERVER: "
-             "removing observe registration with token %x%x\n",
-             obs->token[0], obs->token[1]);
-    obs = NULL;
-    break;
-  }
-}
-
-static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri)
-{
-  if (obs)
-  {
-    LOG_INFO("Stopping observation\n");
-    coap_obs_remove_observee(obs);
-    obs = NULL;
-  }
-  else
-  {
-    LOG_INFO("Starting observation at %s\n", res_uri);
-    obs = coap_obs_request_registration(server_ep, res_uri, notification_server_callback, NULL);
-  }
-}*/
 
 static void client_chunk_handler_registration(coap_message_t *response)
 {
@@ -409,6 +234,8 @@ static void actuator_chunk_handler(coap_message_t *response)
     if(len > 0){
       
         LOG_INFO("Received response: %s\n", (char *)payload);
+        char *sensor = json_parse_string((char *)payload, "pressure");
+        LOG_INFO("Sensor: %s\n", sensor);
         max_retry = 0; // if = 0 --> data received!
         return;
     }
@@ -459,11 +286,13 @@ PROCESS_THREAD(alarm_client, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);
-
-  // toggle observation to the server
-  //toggle_server_observation(obs_control, &main_server_ep, "/control");
+  
+  
 
   // retrieve the IPs of the sensors
+  LOG_INFO("Retrieving IPs of sensors\n");
+  leds_single_off(LEDS_GREEN);
+  leds_single_on(LEDS_YELLOW);
 
   while (max_retry != 0)
   {
@@ -488,6 +317,9 @@ PROCESS_THREAD(alarm_client, ev, data)
   }
 
   LOG_INFO("IPs RETRIEVED\n");
+  leds_single_off(LEDS_YELLOW);
+  leds_single_on(LEDS_GREEN);
+
 
 
   // set the timer
