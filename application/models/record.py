@@ -99,7 +99,6 @@ class Record:
                 cursor.execute(sql, (Record.vibration, Record.rotation, Record.pressure, Record.voltage))
                 connection.commit()
                 print(f"Record inserted: {Record.__str__()}")
-                connection.close()
         except Exception as e:
             print(f"Error inserting record: {e}")
             connection.close()
