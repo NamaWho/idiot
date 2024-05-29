@@ -64,6 +64,9 @@ PROCESS_THREAD(rotation_server, ev, data)
 
   LOG_INFO("Starting Rotation Server\n");
 
+  coap_activate_resource(&res_rotation, "rotation");
+  coap_activate_resource(&res_rotation_status, "rotation/status");
+
   while (max_registration_retry != 0)
   {
     /* -------------- REGISTRATION --------------*/
@@ -91,9 +94,6 @@ PROCESS_THREAD(rotation_server, ev, data)
 
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
-
-  coap_activate_resource(&res_rotation, "rotation");
-  coap_activate_resource(&res_rotation_status, "rotation/status");
 
   if (max_registration_retry == 0 && status == 1)
   {
