@@ -52,7 +52,7 @@ class Registration(Resource):
 
         self.sensors[type]["status"] = 1
         self.sensors[type]["address"] = ip_port[0]
-        #ObserveSensor(ip_port, type, self.database)
+        ObserveSensor(ip_port, type, self.database)
         #ObserveSensorStaus(ip_port, type+"/status")
 
         print(f"Registered {type} sensor at {ip_port}")
