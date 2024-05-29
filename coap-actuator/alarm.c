@@ -86,7 +86,8 @@ static void notification_callback(coap_observee_t *obs, void *notification, coap
 static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
 static void actuator_chunk_handler(coap_message_t *response);
 static int store_value(char *sensor, double value);
-static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri);
+
+//static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri);
 static void sensor_status_handler(coap_message_t *response);
 /*----------------------------------------------------------------*/
 
@@ -374,11 +375,11 @@ static void sensor_status_handler(coap_message_t *response)
     max_retry = -1;
 }
 
-static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri)
+/*static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri)
 {
   max_retry = 3;
 
-  while (max_retry > 0)
+  while (max_retry != 0)
   {
     coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
     coap_set_header_uri_path(request, res_uri);
@@ -412,12 +413,12 @@ static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri)
     }
   }
 
-}
+}*/
 
 PROCESS_THREAD(alarm_client, ev, data)
 {
   static struct etimer actuator_timer, sleep_timer, check_timer;
-  static int actuator_status = 0;
+  //static int actuator_status = 0;
 
   PROCESS_BEGIN();
 
@@ -534,7 +535,7 @@ PROCESS_THREAD(alarm_client, ev, data)
     {
       LOG_INFO("Check timer expired\n");
       // check if the sensors are still active
-      check_sensor(&obs_rotation_ep, "/rotation/status");
+      /*check_sensor(&obs_rotation_ep, "/rotation/status");
       check_sensor(&obs_voltage_ep, "/voltage/status");
       check_sensor(&obs_pressure_ep, "/pressure/status");
       check_sensor(&obs_vibration_ep, "/vibration/status");
@@ -558,7 +559,30 @@ PROCESS_THREAD(alarm_client, ev, data)
       if (vibration_status != 1)
       {
         LOG_INFO("Vibration sensor is not active\n");
+      }*/
+
+
+      max_retry = 3;
+
+      while (max_retry != 0){
+
+        coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+        coap_set_header_uri_path(request, "/rotation/status");
+
+        const char msg[] = "alarm";
+        // Set payload
+        coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+
+        COAP_BLOCKING_REQUEST(&obs_rotation_ep, request, sensor_status_handler);
+
+        if (max_retry == -1){
+          rotation_status = 0;
+        }
       }
+
+      LOG_INFO("Rotation status: %d\n", rotation_status);
+  
 
       // reset the timer
       etimer_reset(&check_timer);
