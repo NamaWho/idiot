@@ -17,8 +17,6 @@ class CoapClient:
         self.period = 5
         self.check_sensors()
 
-
-
     def check_sensors(self):
 
         timer = threading.Timer(self.period, self.check_sensors)
@@ -26,10 +24,10 @@ class CoapClient:
         timer.start()
 
         sensors = {
-            "pressure": {"status": 0, "ip": "", "port": 0},
-            "vibration": {"status": 0, "ip": "", "port": 0},
-            "voltage": {"status": 0, "ip": "", "port": 0},
-            "rotation": {"status": 0, "ip": "", "port": 0}
+            "pressure": {"status": 0, "ip": ""},
+            "vibration": {"status": 0, "ip": ""},
+            "voltage": {"status": 0, "ip": ""},
+            "rotation": {"status": 0, "ip": ""}
         }
 
         try:
@@ -37,7 +35,7 @@ class CoapClient:
                 cursor = self.connection.cursor()
 
                 select_sensor_query = """
-                SELECT ip_address, port, type, status
+                SELECT ip_address, type, status
                 FROM sensor
                 """
 
@@ -46,11 +44,10 @@ class CoapClient:
                 sensor_data = cursor.fetchall()
 
                 for row in sensor_data:
-                    ip_address, port, type, status = row
+                    ip_address, type, status = row
 
                     # Update the sensor dictionary with the sensor data
                     sensors[type]["ip"] = ip_address
-                    sensors[type]["port"] = port
                     sensors[type]["status"] = status
 
                 cursor.close()
