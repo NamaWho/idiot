@@ -19,7 +19,6 @@ class ObserveSensor:
         self.start_observing()
        
     def start_observing(self):
-        print(f"Starting observation at {self.address[0]} and port {self.address[1]}, resource {self.resource}")
         self.client = HelperClient(self.address)
         self.client.observe(self.resource, self.observer)
     

@@ -30,3 +30,12 @@ CREATE TABLE telemetry (
     pressure FLOAT NOT NULL,
     voltage FLOAT NOT NULL
 );
+
+DROP TABLE IF EXISTS failures;
+
+-- Create the failures table
+CREATE TABLE failures (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    component VARCHAR(45),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
