@@ -65,6 +65,9 @@ PROCESS_THREAD(vibration_server, ev, data)
   
   LOG_INFO("Starting Vibration Server\n");
 
+  coap_activate_resource(&res_vibration, "vibration");
+  coap_activate_resource(&res_vibration_status, "vibration/status");
+
   while(max_registration_retry!=0){
 		/* -------------- REGISTRATION --------------*/
 		// Populate the coap_endpoint_t data structure
@@ -91,11 +94,6 @@ PROCESS_THREAD(vibration_server, ev, data)
 
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
-  
-
-  coap_activate_resource(&res_vibration, "vibration");
-  coap_activate_resource(&res_vibration_status, "vibration/status");
-
 
   if(max_registration_retry == 0 && status == 1){
     // set a timer to send the vibration value every 10 seconds

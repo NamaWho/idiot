@@ -64,6 +64,8 @@ PROCESS_THREAD(voltage_server, ev, data)
   PROCESS_BEGIN();
   
   LOG_INFO("Starting Voltage Server\n");
+  coap_activate_resource(&res_voltage, "voltage");
+  coap_activate_resource(&res_voltage_status, "voltage/status");
 
   while(max_registration_retry!=0){
 		/* -------------- REGISTRATION --------------*/
@@ -92,11 +94,6 @@ PROCESS_THREAD(voltage_server, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   
-
-  coap_activate_resource(&res_voltage, "voltage");
-  coap_activate_resource(&res_voltage_status, "voltage/status");
-
-
   if(max_registration_retry == 0 && status == 1){
     // set a timer to send the voltage value every 10 seconds
     etimer_set(&e_timer, CLOCK_SECOND * 10);

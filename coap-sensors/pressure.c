@@ -66,6 +66,9 @@ PROCESS_THREAD(pressure_server, ev, data)
 
   LOG_INFO("Starting Pressure Server\n");
 
+  coap_activate_resource(&res_pressure, "pressure");
+  coap_activate_resource(&res_pressure_status, "pressure/status");
+  
   while(max_registration_retry!=0){
 		/* -------------- REGISTRATION --------------*/
 		// Populate the coap_endpoint_t data structure
@@ -93,9 +96,7 @@ PROCESS_THREAD(pressure_server, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   
-  coap_activate_resource(&res_pressure, "pressure");
-  coap_activate_resource(&res_pressure_status, "pressure/status");
-  
+
   if(max_registration_retry == 0 && status == 1){
     // set a timer to send the pressure value every 10 seconds
     etimer_set(&e_timer, CLOCK_SECOND * 10);
