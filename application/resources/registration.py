@@ -2,9 +2,7 @@
 from mysql.connector import Error
 from coapthon.resources.resource import Resource
 import json
-import time
-import threading
-from models.observer import ObserveSensor 
+from models.observer import ObserveSensor, ObserveActuator
 from models.database import Database
 
 class Registration(Resource):
@@ -63,6 +61,7 @@ class Registration(Resource):
 
         self.actuators[type]["status"] = 1
         self.actuators[type]["address"] = ip_port[0]
+        ObserveActuator(ip_port, type)
 
         print(f"Registered {type} actuator at {ip_port}")
 

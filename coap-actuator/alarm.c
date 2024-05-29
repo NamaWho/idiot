@@ -34,8 +34,6 @@
 static int max_registration_retry = MAX_REGISTRATION_RETRY;
 static int max_retry = 3;
 
-
-
 static int rotation_status = 0;
 static int voltage_status = 0;
 static int pressure_status = 0;
@@ -47,6 +45,9 @@ static int vibration_status = 0;
 #define TOGGLE_INTERVAL 30
 
 /*----------------------------------------------------------------------------*/
+
+extern coap_resource_t res_alarm;
+int component_number = 4;
 
 static coap_endpoint_t main_server_ep;
 static coap_endpoint_t obs_rotation_ep;
@@ -386,12 +387,15 @@ PROCESS_THREAD(alarm_client, ev, data)
 
   PROCESS_BEGIN();
 
-#if PLATFORM_HAS_BUTTON
-#if !PLATFORM_SUPPORTS_BUTTON_HAL
-  SENSORS_ACTIVATE(button_sensor);
-#endif
-  printf("Press a button to change the parameters\n");
-#endif 
+
+  #if PLATFORM_HAS_BUTTON
+  #if !PLATFORM_SUPPORTS_BUTTON_HAL
+    SENSORS_ACTIVATE(button_sensor);
+  #endif
+    printf("Press a button to change the parameters\n");
+  #endif 
+
+  coap_activate_resource(&res_alarm, "alarm");
 
   while (max_registration_retry != 0)
   {
@@ -504,11 +508,11 @@ PROCESS_THREAD(alarm_client, ev, data)
         float values[9] = {rotation_mean, voltage_mean, pressure_mean, vibration_mean, errors[0], errors[1], errors[2], errors[3], errors[4]};
 
         // make prediction
-        int prediction = model_predict(values, 9);
+        component_number = model_predict(values, 9);
 
-        LOG_INFO("PREDICTION: %d\n", prediction);
+        LOG_INFO("PREDICTION: %d\n", component_number);
 
-        switch (prediction){
+        switch (component_number){
           case 0:
             LOG_ERR("COMPONENT 1 IS GOING TO BREAK\n");
             break;
@@ -527,8 +531,7 @@ PROCESS_THREAD(alarm_client, ev, data)
           default:
             break;
         }
-
-
+        res_alarm.trigger();
       }
       // reset the timer
       etimer_reset(&actuator_timer);

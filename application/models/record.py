@@ -102,6 +102,25 @@ class Record:
         except Exception as e:
             print(f"Error inserting record: {e}")
             
+    @staticmethod
+    def push_failure(label):
+        """
+        Push the failure record into the database
+
+        :return: None
+        """
+        if Record.db is not None:
+            db = Database()
+        connection = db.connect_db()
+
+        try:
+            with connection.cursor() as cursor:
+                cursor = connection.cursor()
+                sql = "INSERT INTO failures (component) VALUES (%s)"
+                cursor.execute(sql, (label,))
+                connection.commit()
+        except Exception as e:
+            print(f"Error inserting failure: {e}")
 
     @staticmethod
     def __str__():
