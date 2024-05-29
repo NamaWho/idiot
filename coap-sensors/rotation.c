@@ -7,6 +7,12 @@
 #include "os/dev/leds.h"
 #include "coap-blocking-api.h"
 
+#if PLATFORM_SUPPORTS_BUTTON_HAL
+#include "dev/button-hal.h"
+#else
+#include "dev/button-sensor.h"
+#endif
+
 #include "rotation_status.h"
 
 /* Log configuration */
@@ -62,6 +68,14 @@ PROCESS_THREAD(rotation_server, ev, data)
 
   PROCESS_BEGIN();
 
+#if PLATFORM_HAS_BUTTON
+#if !PLATFORM_SUPPORTS_BUTTON_HAL
+  SENSORS_ACTIVATE(button_sensor);
+#endif
+  printf("Press a button to switch the rotation status\n");
+#endif 
+
+
   LOG_INFO("Starting Rotation Server\n");
 
   coap_activate_resource(&res_rotation, "rotation");
@@ -95,29 +109,37 @@ PROCESS_THREAD(rotation_server, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
 
-  if (max_registration_retry == 0 && status == 1)
-  {
-    // set a timer to send the rotation value every 10 seconds
-    etimer_set(&e_timer, CLOCK_SECOND * 10);
+  // set a timer to send the rotation value every 10 seconds
+  etimer_set(&e_timer, CLOCK_SECOND * 10);
 
-    while (1)
-    {
-      PROCESS_WAIT_EVENT();
+  while (1) {
 
-      if (ev == PROCESS_EVENT_TIMER && data == &e_timer)
-      {
-        if (status == 1)
-        {
+    PROCESS_WAIT_EVENT();
+
+    if (ev == PROCESS_EVENT_TIMER && data == &e_timer){
+        if (status == 1){
           res_rotation.trigger();
           LOG_INFO("Rotation event triggered\n");
           etimer_reset(&e_timer);
         }
-        else
-        {
-          LOG_ERR("Rotation sensor is off\n");
-          break;
-        }
-      }
+
+#if PLATFORM_HAS_BUTTON
+#if PLATFORM_SUPPORTS_BUTTON_HAL
+    } else if(ev == button_hal_release_event) {
+#else
+    } else if(ev == sensors_event && data == &button_sensor) {
+#endif
+
+     LOG_INFO("Button pressed: switch the rotation status from %d to %d\n", status, !status);
+     
+     status = !status;
+
+     if (status == 1){
+      // set a timer to send the rotation value every 10 seconds
+      etimer_set(&e_timer, CLOCK_SECOND * 10);
+     }
+
+#endif /* PLATFORM_HAS_BUTTON */
     }
   }
 

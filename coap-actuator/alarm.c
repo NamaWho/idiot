@@ -380,7 +380,18 @@ PROCESS_THREAD(alarm_client, ev, data)
   static struct etimer actuator_timer, sleep_timer, check_timer;
   static int actuator_status = 0;
 
+  static int index = 0; // index of the value of the parameter to be changed
+
+  static double errors[5] = {0.0, 0.0, 0.0, 0.0, 0.0}; // errors of the sensors
+
   PROCESS_BEGIN();
+
+#if PLATFORM_HAS_BUTTON
+#if !PLATFORM_SUPPORTS_BUTTON_HAL
+  SENSORS_ACTIVATE(button_sensor);
+#endif
+  printf("Press a button to change the parameters\n");
+#endif 
 
   while (max_registration_retry != 0)
   {
@@ -490,7 +501,7 @@ PROCESS_THREAD(alarm_client, ev, data)
         pressure_mean /= 24;
         vibration_mean /= 24;
 
-        float values[9] = {rotation_mean, voltage_mean, pressure_mean, vibration_mean, 1.0, 0.0, 0.0, 1.0, 0.0};
+        float values[9] = {rotation_mean, voltage_mean, pressure_mean, vibration_mean, errors[0], errors[1], errors[2], errors[3], errors[4]};
 
         // make prediction
         int prediction = model_predict(values, 9);
@@ -630,6 +641,24 @@ PROCESS_THREAD(alarm_client, ev, data)
 
       // reset the timer
       etimer_reset(&check_timer);
+    }
+
+#if PLATFORM_HAS_BUTTON
+#if PLATFORM_SUPPORTS_BUTTON_HAL
+    if(ev == button_hal_release_event) {
+#else
+    } else if(ev == sensors_event && data == &button_sensor) {
+#endif
+
+     LOG_INFO("Button pressed: Increment the parameter %d+1 of errors array\n", index);
+     
+     errors[index]++;
+
+     // increment the index
+
+     index = (index + 1) % 5;
+
+#endif /* PLATFORM_HAS_BUTTON */
     }
   }
 

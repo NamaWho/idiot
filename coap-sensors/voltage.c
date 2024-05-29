@@ -7,6 +7,12 @@
 #include "os/dev/leds.h"
 #include "coap-blocking-api.h"
 
+#if PLATFORM_SUPPORTS_BUTTON_HAL
+#include "dev/button-hal.h"
+#else
+#include "dev/button-sensor.h"
+#endif
+
 #include "voltage_status.h"
 
 /* Log configuration */
@@ -62,6 +68,14 @@ PROCESS_THREAD(voltage_server, ev, data)
   static coap_message_t request[1];
 
   PROCESS_BEGIN();
+
+#if PLATFORM_HAS_BUTTON
+#if !PLATFORM_SUPPORTS_BUTTON_HAL
+  SENSORS_ACTIVATE(button_sensor);
+#endif
+  printf("Press a button to switch the voltage status\n");
+#endif 
+  
   
   LOG_INFO("Starting Voltage Server\n");
   coap_activate_resource(&res_voltage, "voltage");
@@ -94,24 +108,36 @@ PROCESS_THREAD(voltage_server, ev, data)
   LOG_INFO("REGISTRATION SUCCESS\n");
   leds_single_off(LEDS_YELLOW);
   
-  if(max_registration_retry == 0 && status == 1){
-    // set a timer to send the voltage value every 10 seconds
-    etimer_set(&e_timer, CLOCK_SECOND * 10);
-    
-    while (1) {
-      PROCESS_WAIT_EVENT();
+  etimer_set(&e_timer, CLOCK_SECOND * 10);
 
-      if (ev == PROCESS_EVENT_TIMER && data == &e_timer){
+  while (1) {
+
+    PROCESS_WAIT_EVENT();
+
+    if (ev == PROCESS_EVENT_TIMER && data == &e_timer){
         if (status == 1){
           res_voltage.trigger();
           LOG_INFO("Voltage event triggered\n");
           etimer_reset(&e_timer);
         }
-        else{
-          LOG_ERR("Voltage sensor is off\n");
-          break;
-        }
-      }
+
+#if PLATFORM_HAS_BUTTON
+#if PLATFORM_SUPPORTS_BUTTON_HAL
+    } else if(ev == button_hal_release_event) {
+#else
+    } else if(ev == sensors_event && data == &button_sensor) {
+#endif
+
+     LOG_INFO("Button pressed: switch the voltage status from %d to %d\n", status, !status);
+     
+     status = !status;
+
+     if (status == 1){
+      // set a timer to send the voltage value every 10 seconds
+      etimer_set(&e_timer, CLOCK_SECOND * 10);
+     }
+
+#endif /* PLATFORM_HAS_BUTTON */
     }
   }
 
