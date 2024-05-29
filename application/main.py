@@ -7,7 +7,7 @@ def main():
     host = "::"
     port = 5683
     server = CoAPServer(host, port)
-    client = CoapClient()
+    #client = CoapClient()
 
     try:
         print("CoAP server start")
