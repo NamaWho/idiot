@@ -34,12 +34,12 @@
 static int max_registration_retry = MAX_REGISTRATION_RETRY;
 static int max_retry = 3;
 
-// static int status = 0;
 
-// static double rotation_status = 0.0;
-// static double voltage_status = 0.0;
-// static double pressure_status = 0.0;
-// static double vibration_status = 0.0;
+
+static int rotation_status = 0;
+static int voltage_status = 0;
+static int pressure_status = 0;
+static int vibration_status = 0;
 
 /* ------ CoAP resources ------ */
 #define SERVER_EP "coap://[fd00::1]:5683"
@@ -57,7 +57,7 @@ static coap_observee_t *obs_rotation;
 static coap_observee_t *obs_voltage;
 static coap_observee_t *obs_pressure;
 static coap_observee_t *obs_vibration;
-// static coap_observee_t *obs_control;
+
 
 static char res_uri_pressure[50];
 static char res_uri_vibration[50];
@@ -76,14 +76,18 @@ static DynamicQueue pressure_queue;
 static DynamicQueue vibration_queue;
 /*-----------------------------------------------------------------------------------*/
 
+static coap_message_t request[1];
+
 /* ----------------------- SIGNATURES ----------------------- */
 static void client_chunk_handler_registration(coap_message_t *response);
 
-// static void toggle_server_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
+
 static void notification_callback(coap_observee_t *obs, void *notification, coap_notification_flag_t flag);
 static void toggle_observation(coap_observee_t *obs, coap_endpoint_t *server_ep, char *res_uri);
 static void actuator_chunk_handler(coap_message_t *response);
 static int store_value(char *sensor, double value);
+static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri);
+static void sensor_status_handler(coap_message_t *response);
 /*----------------------------------------------------------------*/
 
 /*
@@ -308,16 +312,112 @@ static void actuator_chunk_handler(coap_message_t *response)
     }
   }
 
-  // If I'm at this point, there was some problem in the registration phasse, so we decide to try again until max_registration_retry != 0
+  // If I'm at this point, there was some problem in the registration phase, so we decide to try again until max_registration_retry != 0
   max_retry--;
   if (max_retry == 0)
     max_retry = -1;
 }
 
+static void sensor_status_handler(coap_message_t *response)
+{
+  if (response == NULL)
+  {
+    LOG_ERR("Request timed out\n");
+  }
+  else
+  {
+    const uint8_t *payload = NULL;
+
+    int len = coap_get_payload(response, &payload);
+
+    if (len > 0)
+    {
+      LOG_INFO("Received response: %s\n", (char *)payload);
+
+      char *sensor = json_parse_string((char *)payload, "sensor");
+      int status = (int) json_parse_number((char *)payload, "status");
+
+      // verify if the values are valid: sesnor must not be null and value must be greater than 0
+      if (sensor == NULL || status < 0)
+      {
+        LOG_INFO("Invalid data recieved\n");
+        return;
+      }
+
+      if (strcmp(sensor, "rotation") == 0)
+      {
+        LOG_INFO("Rotation: %d\n", status);
+        rotation_status = status;
+      }
+      else if (strcmp(sensor, "voltage") == 0)
+      {
+        LOG_INFO("Voltage: %d\n", status);
+        voltage_status = status;
+      }
+      else if (strcmp(sensor, "pressure") == 0)
+      {
+        LOG_INFO("Pressure: %d\n", status);
+        pressure_status = status;
+      }
+      else if (strcmp(sensor, "vibration") == 0)
+      {
+        LOG_INFO("Vibration: %d\n", status);
+        vibration_status = status;
+      }
+
+      max_retry = 0;
+      return;
+    }
+  }
+  max_retry--;
+  if(max_retry == 0)
+    max_retry = -1;
+}
+
+static void check_sensor(coap_endpoint_t *obs_ep, char *res_uri)
+{
+  max_retry = 3;
+
+  while (max_retry > 0)
+  {
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, res_uri);
+
+    const char msg[] = "alarm";
+    // Set payload
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+
+    COAP_BLOCKING_REQUEST(obs_ep, request, sensor_status_handler);
+
+    if (max_retry == -1)
+    {
+      // after 3 tries, set the status to 0
+      if (strcmp(res_uri, "/rotation/status") == 0)
+      {
+        rotation_status = 0;
+      }
+      else if (strcmp(res_uri, "/voltage/status") == 0)
+      {
+        voltage_status = 0;
+      }
+      else if (strcmp(res_uri, "/pressure/status") == 0)
+      {
+        pressure_status = 0;
+      }
+      else if (strcmp(res_uri, "/vibration/status") == 0)
+      {
+        vibration_status = 0;
+      }
+    }
+  }
+
+}
+
 PROCESS_THREAD(alarm_client, ev, data)
 {
-  static struct etimer et, sleep_timer;
-  static coap_message_t request[1];
+  static struct etimer actuator_timer, sleep_timer, check_timer;
+  static int actuator_status = 0;
 
   PROCESS_BEGIN();
 
@@ -382,7 +482,8 @@ PROCESS_THREAD(alarm_client, ev, data)
   leds_single_on(LEDS_GREEN);
 
   // set the timer
-  etimer_set(&et, 60 * CLOCK_SECOND);
+  etimer_set(&actuator_timer, 60 * CLOCK_SECOND);
+  etimer_set(&check_timer, 10 * CLOCK_SECOND); // every 10 seconds check if the sensors are still active
   initQueue(&rotation_queue);
   initQueue(&voltage_queue);
   initQueue(&pressure_queue);
@@ -392,7 +493,7 @@ PROCESS_THREAD(alarm_client, ev, data)
   {
     PROCESS_YIELD();
     LOG_INFO("Alarm actuator\n");
-    if (etimer_expired(&et))
+    if (etimer_expired(&actuator_timer))
     {
       LOG_INFO("Timer expired\n");
       // if all the queues have 24 elements, make a prediction
@@ -427,7 +528,40 @@ PROCESS_THREAD(alarm_client, ev, data)
         LOG_INFO("Prediction: %d\n", prediction);
       }
       // reset the timer
-      etimer_reset(&et);
+      etimer_reset(&actuator_timer);
+    }
+    if (etimer_expired(&check_timer))
+    {
+      LOG_INFO("Check timer expired\n");
+      // check if the sensors are still active
+      check_sensor(&obs_rotation_ep, "/rotation/status");
+      check_sensor(&obs_voltage_ep, "/voltage/status");
+      check_sensor(&obs_pressure_ep, "/pressure/status");
+      check_sensor(&obs_vibration_ep, "/vibration/status");
+
+      if (rotation_status != 1)
+      {
+        LOG_INFO("Rotation sensor is not active\n");
+      
+      }
+
+      if (voltage_status != 1)
+      {
+        LOG_INFO("Voltage sensor is not active\n");
+      }
+
+      if (pressure_status != 1)
+      {
+        LOG_INFO("Pressure sensor is not active\n");
+      }
+
+      if (vibration_status != 1)
+      {
+        LOG_INFO("Vibration sensor is not active\n");
+      }
+
+      // reset the timer
+      etimer_reset(&check_timer);
     }
   }
 

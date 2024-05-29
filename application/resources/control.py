@@ -20,6 +20,13 @@ class Control(Resource):
 
     def render_GET(self, request):
         print(f"RENDER GET")
+        # # Print parameters of the request
+        # print(f"Request: {request}")
+        # print(f"Request parameters: {request.uri_query})")
+        # # take the value of the query parameter
+        # query = request.uri_query
+        # print(f"Query: {query}")
+        # self.payload = f"Control Resource: {request}"
         self.fetch_sensors_from_db()
         return self
     
