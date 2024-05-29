@@ -101,7 +101,7 @@ class Record:
                 print(f"Record inserted: {Record.__str__()}")
         except Exception as e:
             print(f"Error inserting record: {e}")
-            connection.close()
+            
 
     @staticmethod
     def __str__():

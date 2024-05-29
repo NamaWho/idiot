@@ -14,7 +14,7 @@ class CoapClient:
         self.client = None
         self.database = Database()
         self.connection = self.database.connect_db()
-        self.period = 5
+        self.period = 10
         self.check_sensors()
 
     def check_sensors(self):
@@ -22,6 +22,38 @@ class CoapClient:
         timer = threading.Timer(self.period, self.check_sensors)
         timer.setDaemon(True)
         timer.start()
+
+        # sensors = {
+        #     "pressure": {"status": 0, "ip": ""},
+        #     "vibration": {"status": 0, "ip": ""},
+        #     "voltage": {"status": 0, "ip": ""},
+        #     "rotation": {"status": 0, "ip": ""}
+        # }
+
+        
+        sensors = self.retrieve_nodes_from_db()
+
+        if sensors is None:
+            return
+
+        for key, value in sensors.items():
+
+            if value['ip'] == "":
+                continue
+
+            print (f"Checking {key} sensor at {value['ip']}")
+
+            current_status = self.check_sensor_status(value['ip'], key + "/status")
+
+            if current_status != value['status']:
+               print(f"Sensor {key} status changed from {value['status']} to {current_status}")
+               
+               self.update_sensor_status(key, value['ip'], current_status)
+
+        
+
+
+    def retrieve_nodes_from_db(self):
 
         sensors = {
             "pressure": {"status": 0, "ip": ""},
@@ -32,101 +64,98 @@ class CoapClient:
 
         try:
             if self.connection and self.connection.is_connected():
+                
                 cursor = self.connection.cursor()
 
                 select_sensor_query = """
-                SELECT ip_address, type, status
-                FROM sensor
+                    SELECT ip_address, type, status
+                    FROM sensor
+                    WHERE type IN ('pressure', 'vibration', 'voltage', 'rotation')
                 """
 
                 cursor.execute(select_sensor_query)
-
                 sensor_data = cursor.fetchall()
+                cursor.close()
 
                 for row in sensor_data:
                     ip_address, type, status = row
-
-                    # Update the sensor dictionary with the sensor data
+                    sensors[type]["status"] = int(status)
                     sensors[type]["ip"] = ip_address
-                    sensors[type]["status"] = status
 
-                cursor.close()
-        
+                return sensors
+
+            else:
+                print("Database connection lost")
+                return None
+
         except Error as e:
             print(f"Error retrieving sensor data: {e}")
-            sys.exit(1)
+            return None
+            
 
+    def check_sensor_status(self, ip_address, resource):
 
-        # for each sensor, check the status
-        for sensor_type, sensor in sensors.items():
+        port = 5683
+        client = HelperClient(server=(ip_address, port))
+
+        max_attempts = 3
+
+        for attempt in range(max_attempts):
             try:
-                if(sensor["ip"] == ""):
-                    continue
+                response = client.get(resource)
 
-                client = HelperClient(server=(sensor["ip"], 5683))
-                path = f"{sensor_type}/status"
-                
-                max_attempts = 3
-
-                status = None
-
-                for attempt in range(max_attempts):
-                    try:
-                        data = json.loads(client.get(path).payload)
-                        if "status" in data:
-                            status = data["status"]
-                            break
-                        
-                        else:
-                            time.sleep(1)
-
-                    except Exception as e:
-                        print(f"Error retrieving sensor status: {e}")
-                        time.sleep(1)
-                
                 client.stop()
-                
 
-                # After 3 attempts, if the status is still None, then the sensor is not reachable
-                if status is None:
-                    status = 0
+                data = json.loads(response.payload)
 
-                
-                if sensor["status"] != status:
-                    print(f"Updating {sensor_type} sensor status to {status}")
+                return data['status']
+            
+            except Exception as e:
+                print(f"Error: {e}")
+                client.stop()
 
-                    try:
+        print(f"Failed to get status of sensor at {ip_address}")        
 
-                        self.update_sensor_status(self.connection, sensor_type, sensor["ip"], status)
+        return 0
+
+    def update_sensor_status(self, type, ip_address, status):
+            
+            try:
+
+                if self.connection and self.connection.is_connected():
                     
-                    except Error as e:
-                        print(f"Error updating sensor status: {e}")
-                        sys.exit(1)
-                    
+                    cursor = self.connection.cursor()
 
+                    update_sensor_query = """
+                        UPDATE sensor
+                        SET status = %s
+                        WHERE ip_address = %s AND type = %s
+                    """
+
+                    cursor.execute(update_sensor_query, (status, ip_address, type))
+                    self.connection.commit()
+                    cursor.close()
+
+                    print(f"Updated {type} sensor status to {status}")
+                
+                else:
+                    print("Database connection lost")
+                   
             except Error as e:
-                print(f"Error retrieving sensor data: {e}")
-                sys.exit(1)
+                print(f"Error updating sensor status: {e}")
+               
+            
+                
 
 
 
-    def update_sensor_status(self, connection, sensor_type, ip, status):
-        
-        try:
-            if connection and connection.is_connected():
-                cursor = connection.cursor()
 
-                update_sensor_query = """
-                UPDATE sensor
-                SET status = %s
-                WHERE ip_address = %s
-                """
 
-                cursor.execute(update_sensor_query, (status, ip))
-                connection.commit()
-                cursor.close()
 
-        except Error as e:
-            # Throw exception to be caught by the caller
-            raise Error(f"Error updating {sensor_type} sensor status: {e}")
+
+
+
+
+
+   
         

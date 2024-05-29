@@ -47,7 +47,5 @@ class CoAPServer(CoAP):
             print(f"Error truncating sensor table: {e}")
 
     def close(self):
-        # if self.connection is not None and self.connection.is_connected():
-        #     self.connection.close()
-        #     print("MySQL connection closed")
+        
         super(CoAPServer, self).close()
