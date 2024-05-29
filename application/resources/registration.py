@@ -4,7 +4,7 @@ from coapthon.resources.resource import Resource
 import json
 import time
 import threading
-from models.observer import ObserveSensor #, ObserveSensorStaus
+from models.observer import ObserveSensor 
 from models.database import Database
 
 class Registration(Resource):
