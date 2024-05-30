@@ -17,23 +17,54 @@
 
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-//static void res_event_handler(void);
+static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_voltage_status,
                "title=\"Coap Voltage Status\";rt=\"voltage_status\"",
                res_get_handler,
                NULL,
-               NULL,
+               res_put_handler,
                NULL);
 
 
-/* static void
-res_event_handler(void)
+static void
+res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)
 {
-    
-    LOG_INFO("Payload to be sent: {\"sensor\":\"voltage\", \"status\":%d}\n", status);
-    coap_notify_observers(&res_voltage_status);
-}*/
+    size_t len = 0;
+    const char *value = NULL;
+    int success = 1;
+
+    if ((len = coap_get_post_variable(request, "value", &value)))
+    {
+        if (strncmp(value, "0", len) == 0)
+        {
+            status = 0;
+        }
+        else if (strncmp(value, "1", len) == 0)
+        {
+            status = 1;
+        }
+        else
+        {
+            success = 0;
+        }
+    }
+    else
+    {
+        success = 0;
+    }
+
+    if (success)
+    {
+        coap_set_status_code(response, CHANGED_2_04);
+        LOG_INFO("Voltage status changed to %d\n", status);
+    }
+    else
+    {
+        coap_set_status_code(response, BAD_REQUEST_4_00);
+        LOG_ERR("Voltage status change failed\n");
+    }
+}
 
 static void
 res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)

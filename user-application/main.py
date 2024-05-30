@@ -3,14 +3,16 @@ import time
 from models.database import Database
 from models.observer import ObserveSensor
 from mysql.connector import Error
+from coapthon.client.helperclient import HelperClient
 
 def listOfcommands():
     print("|----- AVAILABLE COMMANDS -----|")
     print("| 1. health                    |")
     print("| 2. monitor                   |")
     print("| 3. failures                  |")
-    print("| 4. stop                      |")
-    print("| 5. exit                      |")
+    print("| 4. switch                    |")
+    print("| 5. stop                      |")
+    print("| 6. exit                      |")
     print("|------------------------------|\n")
 
 def getSensorsAndActuator(connection):
@@ -106,6 +108,85 @@ def stopSensorsAndActuator():
     time.sleep(2)  # Simulating sensor and actuator stopping time
 
 
+def scwitchSensorStatus(connection):
+    sensors = getSensorsAndActuator(connection)
+    if sensors is not None:
+        # print the sensor type
+        print("Select the sensor to switch on/off")
+        sensor_list = []
+        for i, key in enumerate(sensors):
+            if key != "alarm":
+                print(f"{i+1}. {key.capitalize()}")
+                sensor_list.append(key)
+
+        while 1:
+            print("Enter the number of the sensor to switch on/off, or 'exit' to cancel")
+            try:
+                command  = input("SENSOR> ")
+
+                if command.lower() == "exit":
+                    break
+
+                sensor_index = int(command)
+
+                if sensor_index in range(1, len(sensor_list)+1):
+                    print(f"Switching {sensor_list[sensor_index-1]} sensor status...")
+
+                    print("Insert on to switch on, off to switch off")
+
+                    while 1:
+                        command = input("STATUS> ")
+                        command = command.lower()
+
+                        if command == "on":
+                            switch_sensor(sensor_list[sensor_index-1], sensors[sensor_list[sensor_index-1]]["ip_address"], sensor_list[sensor_index-1] + '/status', 'on')
+                            break
+                        elif command == "off":
+                            switch_sensor(sensor_list[sensor_index-1], sensors[sensor_list[sensor_index-1]]["ip_address"], sensor_list[sensor_index-1] + '/status', 'off')
+                            break
+                        else:
+                            print("Invalid input. Try again.") 
+
+                else:
+                    print("Invalid input. Try again.")
+
+            
+            except ValueError:
+                print("Invalid input. Try again.")
+        
+
+
+def switch_sensor(sensor_type, ip_address, resource, status):
+    port = 5683
+    client = HelperClient(server=(ip_address, port))
+
+    try:
+
+        if status == "on":
+            payload = "value=1"
+        else:
+            payload = "value=0"
+
+        response = client.put(resource, payload)
+        
+        
+        if response.code == 68:
+            print(f"Sensor {sensor_type} status switched {status}")
+
+        else:
+            print(f"Error switching sensor {sensor_type} status")
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+    client.stop()
+
+        
+            
+
+
+
+
 if __name__ == "__main__":
 
     print(r'''
@@ -136,6 +217,9 @@ ___) (___| (___) |   | |     | )      | ) \ \__| (____/\| (__/  )___) (___| (___
                 monitorSystem(connection)
             elif command == "failures":
                 retrieveComponentFailuresFromDB(connection)
+            elif command == "switch":
+                print("Switching sensor status...")
+                scwitchSensorStatus(connection)
             elif command == "stop":
                 print("Stopping sensors and actuator...")
                 stopSensorsAndActuator()
