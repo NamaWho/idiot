@@ -14,7 +14,7 @@ class CoapClient:
         self.client = None
         self.database = Database()
         self.connection = self.database.connect_db()
-        self.period = 10
+        self.period = 40
         self.check_sensors()
 
     def check_sensors(self):
@@ -22,13 +22,6 @@ class CoapClient:
         timer = threading.Timer(self.period, self.check_sensors)
         timer.setDaemon(True)
         timer.start()
-
-        # sensors = {
-        #     "pressure": {"status": 0, "ip": ""},
-        #     "vibration": {"status": 0, "ip": ""},
-        #     "voltage": {"status": 0, "ip": ""},
-        #     "rotation": {"status": 0, "ip": ""}
-        # }
 
         
         sensors = self.retrieve_nodes_from_db()

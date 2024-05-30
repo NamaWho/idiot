@@ -242,67 +242,6 @@ static void actuator_chunk_handler(coap_message_t *response)
 
       LOG_INFO("Received response: %s\n", (char *)payload);
 
-      /*  Parse the payload
-          Example Payload: 202:2:2:2;204:4:4:4;205:5:5:5;203:3:3:3
-          1. Split the payload by ";"
-          2. For each sensor:
-              - add prefix "coap://[fd00::"
-              - add suffix "]:5683"
-
-          Recalling order of sensors:
-          1. Pressure
-          2. Vibration
-          3. Voltage
-          4. Rotation
-
-          Recalling example:
-          1. Pressure: coap://[fd00::202:2:2:2]:5683
-          2. Vibration: coap://[fd00::204:4:4:4]:5683
-          3. Voltage: coap://[fd00::205:5:5:5]:5683
-          4. Rotation: coap://[fd00::203:3:3:3]:5683
-      */
-      /*char *payload_copy = strdup((char *)payload);
-      char *sensor = strtok((char *)payload_copy, ";");
-      int i = 0;
-      while (sensor != NULL)
-      {
-
-        switch (i)
-        {
-        case 0:
-          snprintf(res_uri_pressure, sizeof(res_uri_pressure), "coap://[fd00::%s]:5683", sensor);
-          LOG_INFO("Pressure URI: %s\n", res_uri_pressure);
-          coap_endpoint_parse(res_uri_pressure, strlen(res_uri_pressure), &obs_pressure_ep);
-          toggle_observation(obs_pressure, &obs_pressure_ep, "/pressure");
-          break;
-        case 1:
-          snprintf(res_uri_vibration, sizeof(res_uri_vibration), "coap://[fd00::%s]:5683", sensor);
-          LOG_INFO("Vibration URI: %s\n", res_uri_vibration);
-          coap_endpoint_parse(res_uri_vibration, strlen(res_uri_vibration), &obs_vibration_ep);
-          toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
-          break;
-        case 2:
-          snprintf(res_uri_voltage, sizeof(res_uri_voltage), "coap://[fd00::%s]:5683", sensor);
-          LOG_INFO("Voltage URI: %s\n", res_uri_voltage);
-          coap_endpoint_parse(res_uri_voltage, strlen(res_uri_voltage), &obs_voltage_ep);
-          toggle_observation(obs_voltage, &obs_voltage_ep, "/voltage");
-          break;
-        case 3:
-          snprintf(res_uri_rotation, sizeof(res_uri_rotation), "coap://[fd00::%s]:5683", sensor);
-          LOG_INFO("Rotation URI: %s\n", res_uri_rotation);
-          coap_endpoint_parse(res_uri_rotation, strlen(res_uri_rotation), &obs_rotation_ep);
-          toggle_observation(obs_rotation, &obs_rotation_ep, "/rotation");
-          break;
-        default:
-          break;
-        }
-        i++;
-
-        sensor = strtok(NULL, ";");
-      }
-
-      free(payload_copy);*/
-
       char *sensor = json_parse_string((char *)payload, "sensor");
       char *ip = json_parse_string((char *)payload, "ip_address");
 
@@ -319,28 +258,24 @@ static void actuator_chunk_handler(coap_message_t *response)
         snprintf(res_uri_rotation, sizeof(res_uri_rotation), "coap://[%s]:5683", ip);
         LOG_INFO("Rotation URI: %s\n", res_uri_rotation);
         coap_endpoint_parse(res_uri_rotation, strlen(res_uri_rotation), &obs_rotation_ep);
-        //toggle_observation(obs_rotation, &obs_rotation_ep, "/rotation");
       }
       else if (strcmp(sensor, "voltage") == 0)
       {
         snprintf(res_uri_voltage, sizeof(res_uri_voltage), "coap://[%s]:5683", ip);
         LOG_INFO("Voltage URI: %s\n", res_uri_voltage);
         coap_endpoint_parse(res_uri_voltage, strlen(res_uri_voltage), &obs_voltage_ep);
-        // toggle_observation(obs_voltage, &obs_voltage_ep, "/voltage");
       }
       else if (strcmp(sensor, "pressure") == 0)
       {
         snprintf(res_uri_pressure, sizeof(res_uri_pressure), "coap://[%s]:5683", ip);
         LOG_INFO("Pressure URI: %s\n", res_uri_pressure);
         coap_endpoint_parse(res_uri_pressure, strlen(res_uri_pressure), &obs_pressure_ep);
-        // toggle_observation(obs_pressure, &obs_pressure_ep, "/pressure");
       }
       else if (strcmp(sensor, "vibration") == 0)
       {
         snprintf(res_uri_vibration, sizeof(res_uri_vibration), "coap://[%s]:5683", ip);
         LOG_INFO("Vibration URI: %s\n", res_uri_vibration);
         coap_endpoint_parse(res_uri_vibration, strlen(res_uri_vibration), &obs_vibration_ep);
-        // toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
       }
       max_retry = 0;
       return;
@@ -415,7 +350,7 @@ static void sensor_status_handler(coap_message_t *response)
 
 PROCESS_THREAD(alarm_client, ev, data)
 {
-  static struct etimer actuator_timer, sleep_timer, check_timer;
+  static struct etimer actuator_timer, sleep_timer, check_timer, alarm, alarm_timer;
   static int actuator_status = 0;
 
   static int index = 0; // index of the value of the parameter to be changed
@@ -577,8 +512,8 @@ PROCESS_THREAD(alarm_client, ev, data)
   toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
 
   // set the timer
-  etimer_set(&actuator_timer, 60 * CLOCK_SECOND);
-  etimer_set(&check_timer, 10 * CLOCK_SECOND); // every 10 seconds check if the sensors are still active
+  etimer_set(&actuator_timer, 240 * CLOCK_SECOND);
+  etimer_set(&check_timer, 40 * CLOCK_SECOND); // every 10 seconds check if the sensors are still active
   
   initQueue(&rotation_queue);
   initQueue(&voltage_queue);
@@ -588,10 +523,11 @@ PROCESS_THREAD(alarm_client, ev, data)
   while (1)
   {
     PROCESS_YIELD();
-    LOG_INFO("Alarm actuator\n");
 
     if (etimer_expired(&actuator_timer))
     {
+      LOG_INFO("ACTUATOR TIMER EXPIRED\n");
+
       if(actuator_status == 0){
         LOG_INFO("Actuator cannot work because one of the sensors is not active\n");
         etimer_reset(&actuator_timer);
@@ -651,6 +587,13 @@ PROCESS_THREAD(alarm_client, ev, data)
             break;
         }
         res_alarm.trigger();
+
+        if(component_number != 4){ // if there is a failure, ACTUATE: turn on the alarm (led blink)
+          leds_single_toggle(LEDS_RED);
+          etimer_set(&alarm, 1 * CLOCK_SECOND);
+          etimer_set(&alarm_timer, 15 * CLOCK_SECOND); //after 15 seconds the alarm stops
+        }
+        
       }
       // reset the timer
       etimer_reset(&actuator_timer);
@@ -781,6 +724,18 @@ PROCESS_THREAD(alarm_client, ev, data)
      index = (index + 1) % 5;
 
 #endif /* PLATFORM_HAS_BUTTON */
+    }
+    
+    if (etimer_expired(&alarm))
+    {
+      leds_single_toggle(LEDS_RED);
+      etimer_reset(&alarm);
+    }
+    if (etimer_expired(&alarm_timer))
+    {
+      leds_single_off(LEDS_RED);
+      //stop the alarm
+      etimer_stop(&alarm);
     }
   }
 
