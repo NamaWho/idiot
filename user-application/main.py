@@ -6,7 +6,7 @@ from mysql.connector import Error
 from coapthon.client.helperclient import HelperClient
 
 def listOfcommands():
-    print("|----- AVAILABLE COMMANDS -----|")
+    print("\n|----- AVAILABLE COMMANDS -----|")
     print("| 1. health                    |")
     print("| 2. monitor                   |")
     print("| 3. failures                  |")
@@ -14,8 +14,11 @@ def listOfcommands():
     print("| 5. exit                      |")
     print("|------------------------------|\n")
 
-def getSensorsAndActuator(connection):
-     if connection is not None and connection.is_connected():
+def getSensorsAndActuator():
+     
+    connection = Database.connect_db()
+
+    if connection is not None and connection.is_connected():
         sensors = {
             "pressure": {"status": 0, "ip_address": ""},
             "vibration": {"status": 0, "ip_address": ""},
@@ -23,7 +26,7 @@ def getSensorsAndActuator(connection):
             "rotation": {"status": 0, "ip_address": ""},
             "alarm": {"status": 0, "ip_address": ""}
         }  
-         
+            
         try:
             cursor = connection.cursor()
             select_sensor_query = """
@@ -39,14 +42,17 @@ def getSensorsAndActuator(connection):
                 sensors[type]["status"] = int(status)
                 sensors[type]["ip_address"] = ip_address
 
+            connection.close()
             return sensors
         except Error as e:
             print(f"Error retrieving sensor data: {e}")
+            connection.close()
             return None
+            
     
-def getSystemHealth(connection):
-    if connection is not None and connection.is_connected():
-        sensors = getSensorsAndActuator(connection)
+def getSystemHealth():
+    try:
+        sensors = getSensorsAndActuator()
         if sensors is not None:
             print("\n|------------ SYSTEM HEALTH ------------|")
             for key, value in sensors.items():
@@ -54,13 +60,13 @@ def getSystemHealth(connection):
             print("|---------------------------------------|\n")
         else:
             print("Error retrieving sensor data.")
-    else:
+    except Error as e:
         print("Error connecting to the database.")
    
     
-def monitorSystem(connection):
+def monitorSystem():
     # start observing sensors and actuator until stopped, creating an observer relationship with HelperClient
-    sensors = getSensorsAndActuator(connection)
+    sensors = getSensorsAndActuator()
     print("System is being monitored. Press 'Ctrl + C' to stop monitoring.")
     time.sleep(2) 
     observers = []
@@ -76,11 +82,11 @@ def monitorSystem(connection):
     except KeyboardInterrupt:
         for observer in observers:
             observer.stop_observing()
-        
 
-def retrieveComponentFailuresFromDB(connection):
+def retrieveComponentFailuresFromDB():
+    connection = Database.connect_db()
+
     if connection is not None and connection.is_connected():
-
         try:
             cursor = connection.cursor()
             select_failure_query = """
@@ -99,13 +105,14 @@ def retrieveComponentFailuresFromDB(connection):
                 print("No component failures found.")
         except Error as e:
             print(f"Error retrieving failure data: {e}")
+        
+        connection.close()
 
-
-def switchSensorStatus(connection):
-    sensors = getSensorsAndActuator(connection)
+def switchSensorStatus():
+    sensors = getSensorsAndActuator()
     if sensors is not None:
         # print the sensor type
-        print("Select the sensor to switch on/off")
+        print("\nSelect the sensor to switch on/off")
         sensor_list = []
         for i, key in enumerate(sensors):
             if key != "alarm":
@@ -142,12 +149,9 @@ def switchSensorStatus(connection):
 
                 else:
                     print("Invalid input. Try again.")
-
             
             except ValueError:
                 print("Invalid input. Try again.")
-        
-
 
 def switch_sensor(sensor_type, ip_address, resource, status):
     port = 5683
@@ -162,7 +166,6 @@ def switch_sensor(sensor_type, ip_address, resource, status):
 
         response = client.put(resource, payload)
         
-        
         if response.code == 68:
             print(f"Sensor {sensor_type} status switched {status}")
 
@@ -173,10 +176,6 @@ def switch_sensor(sensor_type, ip_address, resource, status):
         print(f"Error: {e}")
 
     client.stop()
-
-        
-            
-
 
 
 
@@ -196,8 +195,6 @@ ___) (___| (___) |   | |     | )      | ) \ \__| (____/\| (__/  )___) (___| (___
 
     listOfcommands()
     start = 0
-    database = Database()
-    connection = database.connect_db()
 
     try:
         while 1:
@@ -205,14 +202,14 @@ ___) (___| (___) |   | |     | )      | ) \ \__| (____/\| (__/  )___) (___| (___
             command = command.lower()
 
             if command == "health":
-                getSystemHealth(connection)
+                getSystemHealth()
             elif command == "monitor":
-                monitorSystem(connection)
+                monitorSystem()
             elif command == "failures":
-                retrieveComponentFailuresFromDB(connection)
+                retrieveComponentFailuresFromDB()
             elif command == "switch":
                 print("Switching sensor status...")
-                switchSensorStatus(connection)
+                switchSensorStatus()
             elif command == "help":
                 listOfcommands()
             elif command == "exit":

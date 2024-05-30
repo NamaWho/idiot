@@ -32,7 +32,8 @@ void client_chunk_handler(coap_message_t *response)
   {
 
     LOG_ERR("Request timed out\n");
-  }else
+  }
+  else
   {
 
     LOG_INFO("Registration successful\n");
@@ -73,8 +74,7 @@ PROCESS_THREAD(rotation_server, ev, data)
   SENSORS_ACTIVATE(button_sensor);
 #endif
   printf("Press a button to switch the rotation status\n");
-#endif 
-
+#endif
 
   LOG_INFO("Starting Rotation Server\n");
 
@@ -112,32 +112,40 @@ PROCESS_THREAD(rotation_server, ev, data)
   // set a timer to send the rotation value every 10 seconds
   etimer_set(&e_timer, CLOCK_SECOND * 10);
 
-  while (1) {
+  while (1)
+  {
 
     PROCESS_WAIT_EVENT();
 
-    if (ev == PROCESS_EVENT_TIMER && data == &e_timer){
-        if (status == 1){
-          res_rotation.trigger();
-          LOG_INFO("Rotation event triggered\n");
-          etimer_reset(&e_timer);
-        }
+    if (ev == PROCESS_EVENT_TIMER && data == &e_timer)
+    {
+      if (status == 1)
+      {
+        res_rotation.trigger();
+        LOG_INFO("Rotation event triggered\n");
+      }
+      etimer_reset(&e_timer);
 
 #if PLATFORM_HAS_BUTTON
 #if PLATFORM_SUPPORTS_BUTTON_HAL
-    } else if(ev == button_hal_release_event) {
+    }
+    else if (ev == button_hal_release_event)
+    {
 #else
-    } else if(ev == sensors_event && data == &button_sensor) {
+    }
+    else if (ev == sensors_event && data == &button_sensor)
+    {
 #endif
 
-     LOG_INFO("Button pressed: switch the rotation status from %d to %d\n", status, !status);
-     
-     status = !status;
+      LOG_INFO("Button pressed: switch the rotation status from %d to %d\n", status, !status);
 
-     if (status == 1){
-      // set a timer to send the rotation value every 10 seconds
-      etimer_set(&e_timer, CLOCK_SECOND * 10);
-     }
+      status = !status;
+
+      if (status == 1)
+      {
+        // set a timer to send the rotation value every 10 seconds
+        etimer_set(&e_timer, CLOCK_SECOND * 10);
+      }
 
 #endif /* PLATFORM_HAS_BUTTON */
     }

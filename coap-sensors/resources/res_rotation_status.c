@@ -4,7 +4,6 @@
 #include <time.h>
 #include "coap-engine.h"
 
-
 #include "rotation_status.h"
 
 /* Log configuration */
@@ -12,20 +11,15 @@
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_APP
 
-
-
-
-
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_rotation_status,
-               "title=\"Coap Rotation Status\";rt=\"rotation_status\"",
-               res_get_handler,
-               NULL,
-               res_put_handler,
-               NULL);
-
+         "title=\"Coap Rotation Status\";rt=\"rotation_status\"",
+         res_get_handler,
+         NULL,
+         res_put_handler,
+         NULL);
 
 static void
 res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)
