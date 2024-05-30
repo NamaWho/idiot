@@ -11,8 +11,7 @@ def listOfcommands():
     print("| 2. monitor                   |")
     print("| 3. failures                  |")
     print("| 4. switch                    |")
-    print("| 5. stop                      |")
-    print("| 6. exit                      |")
+    print("| 5. exit                      |")
     print("|------------------------------|\n")
 
 def getSensorsAndActuator(connection):
@@ -92,9 +91,9 @@ def retrieveComponentFailuresFromDB(connection):
             cursor.close()
 
             if len(failure_data) > 0:
-                print("\n|------------ COMPONENT FAILURES ------------|")
+                print("\n|------------ COMPONENT HEALTH CHECK ------------|")
                 for row in failure_data:
-                    print(f"| {row[1]}:\t{row[2]} at {row[3]} \t|")
+                    print(f"| {row[1]}:\t{row[2]} \t|")
                 print("|--------------------------------------------|\n")
             else:
                 print("No component failures found.")
@@ -102,13 +101,7 @@ def retrieveComponentFailuresFromDB(connection):
             print(f"Error retrieving failure data: {e}")
 
 
-def stopSensorsAndActuator():
-    print("Stopping all sensors and the actuator...")
-    # Add code to stop sensors and actuator
-    time.sleep(2)  # Simulating sensor and actuator stopping time
-
-
-def scwitchSensorStatus(connection):
+def switchSensorStatus(connection):
     sensors = getSensorsAndActuator(connection)
     if sensors is not None:
         # print the sensor type
@@ -219,10 +212,7 @@ ___) (___| (___) |   | |     | )      | ) \ \__| (____/\| (__/  )___) (___| (___
                 retrieveComponentFailuresFromDB(connection)
             elif command == "switch":
                 print("Switching sensor status...")
-                scwitchSensorStatus(connection)
-            elif command == "stop":
-                print("Stopping sensors and actuator...")
-                stopSensorsAndActuator()
+                switchSensorStatus(connection)
             elif command == "help":
                 listOfcommands()
             elif command == "exit":
