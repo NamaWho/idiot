@@ -261,7 +261,7 @@ static void actuator_chunk_handler(coap_message_t *response)
           3. Voltage: coap://[fd00::205:5:5:5]:5683
           4. Rotation: coap://[fd00::203:3:3:3]:5683
       */
-      char *payload_copy = strdup((char *)payload);
+      /*char *payload_copy = strdup((char *)payload);
       char *sensor = strtok((char *)payload_copy, ";");
       int i = 0;
       while (sensor != NULL)
@@ -301,9 +301,47 @@ static void actuator_chunk_handler(coap_message_t *response)
         sensor = strtok(NULL, ";");
       }
 
-      free(payload_copy);
+      free(payload_copy);*/
 
-      // if all the sensors are observed, set max_retry to 0
+      char *sensor = json_parse_string((char *)payload, "sensor");
+      char *ip = json_parse_string((char *)payload, "ip_address");
+
+      LOG_INFO("SENSOR: %s\n", sensor);
+      LOG_INFO("IP: %s\n", ip);
+      
+      if (sensor == NULL || ip == NULL)
+      {
+        LOG_INFO("Invalid data recieved\n");
+        return;
+      }
+      if (strcmp(sensor, "rotation") == 0)
+      {
+        snprintf(res_uri_rotation, sizeof(res_uri_rotation), "coap://[%s]:5683", ip);
+        LOG_INFO("Rotation URI: %s\n", res_uri_rotation);
+        coap_endpoint_parse(res_uri_rotation, strlen(res_uri_rotation), &obs_rotation_ep);
+        //toggle_observation(obs_rotation, &obs_rotation_ep, "/rotation");
+      }
+      else if (strcmp(sensor, "voltage") == 0)
+      {
+        snprintf(res_uri_voltage, sizeof(res_uri_voltage), "coap://[%s]:5683", ip);
+        LOG_INFO("Voltage URI: %s\n", res_uri_voltage);
+        coap_endpoint_parse(res_uri_voltage, strlen(res_uri_voltage), &obs_voltage_ep);
+        // toggle_observation(obs_voltage, &obs_voltage_ep, "/voltage");
+      }
+      else if (strcmp(sensor, "pressure") == 0)
+      {
+        snprintf(res_uri_pressure, sizeof(res_uri_pressure), "coap://[%s]:5683", ip);
+        LOG_INFO("Pressure URI: %s\n", res_uri_pressure);
+        coap_endpoint_parse(res_uri_pressure, strlen(res_uri_pressure), &obs_pressure_ep);
+        // toggle_observation(obs_pressure, &obs_pressure_ep, "/pressure");
+      }
+      else if (strcmp(sensor, "vibration") == 0)
+      {
+        snprintf(res_uri_vibration, sizeof(res_uri_vibration), "coap://[%s]:5683", ip);
+        LOG_INFO("Vibration URI: %s\n", res_uri_vibration);
+        coap_endpoint_parse(res_uri_vibration, strlen(res_uri_vibration), &obs_vibration_ep);
+        // toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
+      }
       max_retry = 0;
       return;
     }
@@ -313,7 +351,6 @@ static void actuator_chunk_handler(coap_message_t *response)
     }
   }
 
-  // If I'm at this point, there was some problem in the registration phase, so we decide to try again until max_registration_retry != 0
   max_retry--;
   if (max_retry == 0)
     max_retry = -1;
@@ -431,11 +468,88 @@ PROCESS_THREAD(alarm_client, ev, data)
   leds_single_off(LEDS_GREEN);
   leds_single_on(LEDS_YELLOW);
 
+  /* -------------- GETTING IP OF PRESSURE SENSOR --------------*/
+
   while (max_retry != 0)
   {
-    /* -------------- GETTING IPs OF SENSORS --------------*/
     coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
     coap_set_header_uri_path(request, "control/");
+    coap_set_header_uri_query(request, "pressure");
+    const char msg[] = "alarm";
+    // Set payload
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+    leds_single_on(LEDS_YELLOW);
+
+    COAP_BLOCKING_REQUEST(&main_server_ep, request, actuator_chunk_handler);
+
+    /* -------------- END --------------*/
+    if (max_retry == -1)
+    {
+      etimer_set(&sleep_timer, 10 * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+      max_retry = 3;
+    }
+  }
+  
+  /* -------------- GETTING IP OF VIBRATION SENSOR --------------*/
+  max_retry = 3;
+
+  while (max_retry != 0)
+  {
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, "control/");
+    coap_set_header_uri_query(request, "vibration");
+    const char msg[] = "alarm";
+    // Set payload
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+    leds_single_on(LEDS_YELLOW);
+
+    COAP_BLOCKING_REQUEST(&main_server_ep, request, actuator_chunk_handler);
+
+    /* -------------- END --------------*/
+    if (max_retry == -1)
+    {
+      etimer_set(&sleep_timer, 10 * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+      max_retry = 3;
+    }
+  }
+
+  /* -------------- GETTING IP OF VOLTAGE SENSOR --------------*/
+  max_retry = 3;
+
+  while (max_retry != 0)
+  {
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, "control/");
+    coap_set_header_uri_query(request, "voltage");
+    const char msg[] = "alarm";
+    // Set payload
+    coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+
+    leds_single_on(LEDS_YELLOW);
+
+    COAP_BLOCKING_REQUEST(&main_server_ep, request, actuator_chunk_handler);
+
+    /* -------------- END --------------*/
+    if (max_retry == -1)
+    {
+      etimer_set(&sleep_timer, 10 * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+      max_retry = 3;
+    }
+  }
+
+  /* -------------- GETTING IP OF ROTATION SENSOR --------------*/
+  max_retry = 3;
+
+  while (max_retry != 0)
+  {
+    coap_init_message(request, COAP_TYPE_CON, COAP_GET, 0);
+    coap_set_header_uri_path(request, "control/");
+    coap_set_header_uri_query(request, "rotation");
     const char msg[] = "alarm";
     // Set payload
     coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
@@ -456,6 +570,11 @@ PROCESS_THREAD(alarm_client, ev, data)
   LOG_INFO("IPs RETRIEVED\n");
   leds_single_off(LEDS_YELLOW);
   leds_single_on(LEDS_GREEN);
+
+  toggle_observation(obs_rotation, &obs_rotation_ep, "/rotation");
+  toggle_observation(obs_voltage, &obs_voltage_ep, "/voltage");
+  toggle_observation(obs_pressure, &obs_pressure_ep, "/pressure");
+  toggle_observation(obs_vibration, &obs_vibration_ep, "/vibration");
 
   // set the timer
   etimer_set(&actuator_timer, 60 * CLOCK_SECOND);
