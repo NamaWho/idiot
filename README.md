@@ -1,4 +1,4 @@
-# iot-project
+# IDIOT: An InDustrial IoT Network for Predictive Maintenance
 
 ## Commit Format
 > (domain): description
@@ -11,13 +11,3 @@
 - *db* - Database
 - *docs* - Documentation
 - *misc* - Miscellaneous
-
-## Routes
-### registration/
-- POST 
-### telemetry/
-- GET 
-- POST
-### control/
-- POST
-
