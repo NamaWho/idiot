@@ -3,8 +3,9 @@
 #include <math.h>
 #include <time.h>
 
-#define M_PI 3.14159265358979323846
-
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 double generate_gaussian(double mean, double stddev) {
     static int haveSpare = 0;
